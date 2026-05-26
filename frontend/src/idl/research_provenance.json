@@ -1,0 +1,103 @@
+{
+  "version": "0.1.0",
+  "name": "research_provenance",
+  "instructions": [
+    {
+      "name": "registerDataset",
+      "accounts": [
+        { "name": "datasetRecord", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "datasetId", "type": "string" },
+        { "name": "name", "type": "string" },
+        { "name": "description", "type": "string" },
+        { "name": "fileHash", "type": "string" },
+        { "name": "ipfsCid", "type": "string" },
+        { "name": "metadataUri", "type": "string" }
+      ]
+    },
+    {
+      "name": "updateDataset",
+      "accounts": [
+        { "name": "datasetRecord", "isMut": true, "isSigner": false },
+        { "name": "versionRecord", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": true, "isSigner": true },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "datasetId", "type": "string" },
+        { "name": "versionNumber", "type": "u32" },
+        { "name": "newFileHash", "type": "string" },
+        { "name": "changeDescription", "type": "string" },
+        { "name": "ipfsCid", "type": "string" }
+      ]
+    },
+    {
+      "name": "transferOwnership",
+      "accounts": [
+        { "name": "datasetRecord", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": false, "isSigner": true }
+      ],
+      "args": [
+        { "name": "datasetId", "type": "string" },
+        { "name": "newAuthority", "type": "publicKey" }
+      ]
+    },
+    {
+      "name": "deactivateDataset",
+      "accounts": [
+        { "name": "datasetRecord", "isMut": true, "isSigner": false },
+        { "name": "authority", "isMut": false, "isSigner": true }
+      ],
+      "args": [
+        { "name": "datasetId", "type": "string" }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DatasetRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "publicKey" },
+          { "name": "datasetId", "type": "string" },
+          { "name": "name", "type": "string" },
+          { "name": "description", "type": "string" },
+          { "name": "currentHash", "type": "string" },
+          { "name": "versionCount", "type": "u32" },
+          { "name": "createdAt", "type": "i64" },
+          { "name": "updatedAt", "type": "i64" },
+          { "name": "ipfsCid", "type": "string" },
+          { "name": "metadataUri", "type": "string" },
+          { "name": "isActive", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "VersionRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "datasetId", "type": "string" },
+          { "name": "versionNumber", "type": "u32" },
+          { "name": "previousHash", "type": "string" },
+          { "name": "fileHash", "type": "string" },
+          { "name": "changeDescription", "type": "string" },
+          { "name": "updatedBy", "type": "publicKey" },
+          { "name": "timestamp", "type": "i64" },
+          { "name": "ipfsCid", "type": "string" }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    { "code": 6000, "name": "IdTooLong", "msg": "Dataset ID too long (max 64 chars)" },
+    { "code": 6001, "name": "NameTooLong", "msg": "Name too long (max 128 chars)" },
+    { "code": 6002, "name": "InvalidHash", "msg": "Invalid SHA-256 hash (must be 64 hex chars)" },
+    { "code": 6003, "name": "Unauthorized", "msg": "Unauthorized: only dataset owner can perform this action" },
+    { "code": 6004, "name": "InvalidVersionNumber", "msg": "Invalid version number: must be sequential" }
+  ]
+}

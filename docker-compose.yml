@@ -1,0 +1,71 @@
+# ─── DataProve — Local Development Docker Compose ──────────────────────────
+#
+# Starts MongoDB and Redis for local development.
+# The Express API and frontend are run directly via npm (not containerized here)
+# for easier hot-reload during development.
+#
+# USAGE:
+#   docker compose up -d          # Start data services
+#   docker compose down           # Stop everything
+#   docker compose down -v        # Stop and wipe volumes (fresh start)
+
+version: '3.9'
+
+networks:
+  dataprove_net:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+
+services:
+
+  # ─── MongoDB 7 (single-node replica set for local dev transactions) ─────────
+  # NOTE: We run MongoDB with a replica set to support multi-document ACID
+  # transactions locally, which are required by the backend.
+  mongodb:
+    image: mongo:7
+    container_name: dataprove_mongo
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018"]
+    ports:
+      - "27018:27018"
+    volumes:
+      - mongo_data:/data/db
+      - ./infra/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - dataprove_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    environment:
+      - MONGO_INITDB_DATABASE=dataprove
+
+  # ─── Redis 7 (for BullMQ job queue) ──────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: dataprove_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dataprove_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

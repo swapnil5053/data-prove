@@ -1,0 +1,9 @@
+{
+  "name": "research-provenance-root",
+  "version": "2.0.0",
+  "description": "Root orchestrator for Research Data Provenance System",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/bootstrap.js && docker compose -f docker-compose.dev.yml up --build"
+  }
+}

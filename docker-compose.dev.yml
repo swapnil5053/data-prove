@@ -1,0 +1,164 @@
+version: '3.9'
+
+networks:
+  dataprove_net:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+
+services:
+  # ─── MongoDB 7 (single-node replica set for local dev transactions) ─────────
+  mongodb:
+    image: mongo:7
+    container_name: dataprove_mongo
+    hostname: mongodb
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - dataprove_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27017", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    environment:
+      - MONGO_INITDB_DATABASE=dataprove
+
+  # ─── MongoDB replica set initiator (one-shot helper) ────────────────────────
+  mongo-init:
+    image: mongo:7
+    container_name: dataprove_mongo_init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: >
+      mongosh --host mongodb --port 27017 --eval "
+        try {
+          const status = rs.status();
+          if (status.ok) {
+            print('Replica set rs0 already initiated.');
+          }
+        } catch (e) {
+          try {
+            rs.initiate({
+              _id: 'rs0',
+              members: [{ _id: 0, host: 'mongodb:27017' }]
+            });
+            print('Replica set rs0 initiated successfully.');
+          } catch (initErr) {
+            print('Replica set initiation failed: ' + initErr.message);
+            quit(1);
+          }
+        }
+      "
+    networks:
+      - dataprove_net
+
+  # ─── Redis 7 (for BullMQ job queue) ──────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: dataprove_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dataprove_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend API (Express + TypeScript) ──────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: development
+    container_name: dataprove_backend
+    restart: unless-stopped
+    command: npx tsx src/server.ts
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - PORT=3001
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongodb:27017/dataprove?replicaSet=rs0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SOLANA_RPC_URL=https://api.devnet.solana.com
+      - SOLANA_NETWORK=devnet
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - dataprove_net
+
+  # ─── Background Worker (BullMQ + Solana Verifier) ────────────────────────
+  worker:
+    build:
+      context: ./backend
+      target: development
+    container_name: dataprove_worker
+    restart: unless-stopped
+    command: npx tsx src/workers/verifier.ts
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongodb:27017/dataprove?replicaSet=rs0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SOLANA_RPC_URL=https://api.devnet.solana.com
+      - SOLANA_NETWORK=devnet
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - dataprove_net
+
+  # ─── Frontend (React + Vite) ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    container_name: dataprove_frontend
+    restart: unless-stopped
+    command: npx vite --host 0.0.0.0 --port 5173
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3001
+      - BACKEND_URL=http://backend:3001
+    depends_on:
+      - backend
+    networks:
+      - dataprove_net
