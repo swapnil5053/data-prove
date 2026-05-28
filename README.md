@@ -162,5 +162,6 @@ The following variables are utilized across the stack. These are automatically g
 ---
 ## Contributors
 - [Pritham](https://github.com/preeeetham)
+- [Samir G](https://github.com/Samir-477)
 - [Swapnil Kumar](https://github.com/swapnilsk)
 
