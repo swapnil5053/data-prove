@@ -160,3 +160,7 @@ The following variables are utilized across the stack. These are automatically g
 | `VITE_API_BASE_URL`| Frontend| `http://localhost:3001` | API base URL for network/WebSocket calls.|
 
 ---
+## Contributors
+- [Pritham](https://github.com/preeeetham)
+- [Swapnil Kumar](https://github.com/swapnilsk)
+
