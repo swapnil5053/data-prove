@@ -8,8 +8,6 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green?style=flat-square&logo=mongodb)](https://www.mongodb.com/)
 [![Redis](https://img.shields.io/badge/Redis-Queue-red?style=flat-square&logo=redis)](https://redis.io/)
 
-![DataProve Dashboard Demo](./docs/dashboard-preview.jpg)
-
 ---
 
 ## Project Overview
