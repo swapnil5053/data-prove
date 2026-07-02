@@ -114,7 +114,7 @@ dataprove/
 
 ## Getting Started
 
-The entire development stack is containerized for a seamless setup experience. 
+The entire development stack is containerized; a single command boots the stack. 
 
 ### Prerequisites
 Make sure you have the following installed on your local machine:
@@ -126,14 +126,13 @@ Make sure you have the following installed on your local machine:
 
 1. Clone the repository and navigate into the root directory:
    ```bash
-   git clone https://github.com/swapnil5053/data-prove.git
+   git clone [https://github.com/swapnil5053/data-prove.git](https://github.com/swapnil5053/data-prove.git)
    cd data-prove
    ```
 
 2. Install the root dependencies and start the Docker stack:
    ```bash
    npm install
-   npm run dev
    ```
 
 The `npm run dev` command executes a bootstrap script to generate missing configuration (`.env`) files, then starts the Docker Compose services to build and run MongoDB (as a replica set), Redis, the Express API, the background worker, and the React frontend.
@@ -161,4 +160,3 @@ The following variables are utilized across the stack. These are automatically g
 ## Contributors
 - [Pritham](https://github.com/preeeetham)
 - [Swapnil Kumar](https://github.com/swapnilsk)
-
