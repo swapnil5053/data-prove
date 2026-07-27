@@ -1,0 +1,231 @@
+/**
+ * ─── Reset ───────────────────────────────────────────────────────────────────
+ * Modern reset, the focus-visible baseline, and the reduced-motion guard.
+ * Element defaults only. Nothing here knows about a component.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Root text scale. 112.5% of the user's own browser default (usually 16px,
+   whatever they've set it to) makes 1rem = ~18px instead of 16px, which is
+   what every rem-based size in typography.css scales from. A percentage,
+   not a fixed px, so it still multiplies with a user's own zoom/accessibility
+   font-size setting rather than overriding it -- this is a primarily-desktop
+   product surface, so there is no smaller-viewport override to counteract. */
+html { font-size: 112.5%; }
+
+body,
+h1, h2, h3, h4, h5, h6,
+p, figure, blockquote, dl, dd,
+ul[class], ol[class] { margin: 0; }
+
+ul[class], ol[class] { padding: 0; list-style: none; }
+
+body {
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--fg);
+  /* Both themes are declared, so tell the UA which one is live: it drives form
+     controls, scrollbars and the caret, none of which our CSS reaches. */
+  color-scheme: light dark;
+}
+
+/**
+ * ─── Drafting grid ───────────────────────────────────────────────────────────
+ *
+ * The concept is the technical drawing, and a technical drawing is made on
+ * ruled film. Up to now the ground was a flat blue-grey, which is the *colour*
+ * of drafting paper with none of its substance -- and a flat field is what
+ * "bland" actually describes: nothing for the eye to register scale against.
+ *
+ * A 32px minor grid with a 4x major, both at very low contrast. It should never
+ * be the first thing you notice. It should be the reason the page feels like a
+ * surface rather than a backdrop, and the reason the ribbon looks like it is
+ * *drawn on* something.
+ *
+ * color-mix against the live tokens, so it re-tints with the theme rather than
+ * needing a second declaration, and so no colour literal appears here.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--edge) 46%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--edge) 46%, transparent) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--edge) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--edge) 22%, transparent) 1px, transparent 1px);
+  background-size: 128px 128px, 128px 128px, 32px 32px, 32px 32px;
+}
+
+/* The grid is texture, not information. Anyone who has asked for less motion
+   has usually also asked for less noise, and it is the first thing to go. */
+@media (prefers-reduced-motion: reduce) {
+  body::before { display: none; }
+}
+
+/* Sticky footer. Without this the footer sits directly under the content, so a
+   short page on a tall screen leaves it floating in the middle with empty
+   canvas beneath -- which reads as the page having failed to load rather than
+   as the page being short. #root and body both need to participate or the
+   height chain breaks. */
+body,
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+#root { min-height: 100vh; }
+#main { flex: 1 0 auto; }
+
+img, picture, svg, video, canvas { display: block; max-width: 100%; }
+svg { flex-shrink: 0; }
+
+input, button, textarea, select { font: inherit; color: inherit; }
+button { background: none; border: none; padding: 0; cursor: pointer; }
+
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+
+table { border-collapse: collapse; border-spacing: 0; }
+
+[hidden] { display: none !important; }
+
+/**
+ * ── Focus ────────────────────────────────────────────────────────────────────
+ * Every interactive element, once, here. The baseline before this was a single
+ * focus rule in 1400 lines, so keyboard users had almost nothing to follow.
+ *
+ * :focus-visible rather than :focus, so a mouse click does not leave a ring but
+ * a Tab press does. outline-offset keeps the ring clear of the control's own
+ * border on dense controls.
+ *
+ * `outline: none` without a replacement is not permitted anywhere in this
+ * codebase. If a control needs a different indicator, it overrides the colour
+ * or the offset -- never the existence.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Remove the UA ring only where we have already supplied our own above. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection { background: var(--accent); color: var(--accent-fg); }
+
+/**
+ * ── Cursor ───────────────────────────────────────────────────────────────────
+ * Explicit `default` on the body itself, rather than leaving every element at
+ * the UA's `auto` and hoping browsers guess "not selectable" correctly over
+ * plain UI chrome. `auto` is exactly the ambiguity that let a text-selection
+ * I-beam appear over headings, labels, and card text that were never meant to
+ * be treated as prose.
+ *
+ * Anchors and buttons opt back into `pointer`, explicitly, rather than relying
+ * on the UA default for them either -- the original bug was a <Link> wrapping
+ * a block of prose (a dataset card) inconsistently showing an I-beam over its
+ * own text content instead of the pointer the whole element is clickable
+ * with, and `a, a *` states the intent instead of assuming the browser gets it
+ * right.
+ *
+ * The dataset card sets its own `cursor: pointer` / `user-select: none`
+ * directly (see .dataset-card in Dashboard.css) rather than inheriting it from
+ * a wrapping <a>: the card's copy button is a real <button>, and a <button>
+ * nested inside an <a> is invalid HTML that behaves unpredictably across
+ * browsers and screen readers. The card's title is a small, real <Link> whose
+ * own ::after is stretched to cover the full card (the standard
+ * stretched-link pattern), so the whole card still navigates on click without
+ * the copy button ever being its descendant.
+ *
+ * Prose and data a user might genuinely want to select -- paragraphs,
+ * definition-list values, hashes, addresses, code -- opt back into `text`
+ * explicitly. This product's premise is copyable values; losing the
+ * text-selection cursor there would be a regression, not a fix.
+ *
+ * `cursor` alone is not enough. Chromium and WebKit paint an I-beam over any
+ * text node the user could still drag-select, even when its own CSS `cursor`
+ * resolves to `pointer` or `default` -- that override happens at the paint
+ * layer, so `getComputedStyle().cursor` reports the correct value while the
+ * actually-rendered icon is still the browser's, not this stylesheet's. The
+ * fix has to remove the selectability itself: every `cursor: pointer` /
+ * `cursor: default` rule below is paired with the matching `user-select`, so
+ * there is nothing left for the browser to treat as selectable text over
+ * badges, labels, nav, or the dataset card. The `cursor: text` opt-ins pair
+ * with `user-select: text` for the same reason, in the other direction.
+ */
+body {
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prose/data opt-in comes first; anchors and buttons come after so that if a
+   <p> or mono value is ever nested inside a link (equal specificity either
+   way), the later rule -- the clickable region's pointer -- wins. Link
+   semantics take priority over content semantics for cursor purposes. */
+p,
+dd,
+.t-mono,
+.hash-truncated,
+.detail-info-value,
+.version-desc,
+.version-hash,
+.detail-authority,
+code,
+kbd,
+samp,
+pre {
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+a,
+a * {
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Form controls manage their own editable region regardless of an ancestor's
+   user-select, in every browser that matters here -- stated anyway so intent
+   doesn't depend on that being true forever. */
+input,
+textarea {
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/**
+ * ── Reduced motion ───────────────────────────────────────────────────────────
+ * A global guard rather than a per-component courtesy. The four infinite aurora
+ * animations that used to run on every route could not be turned off by anyone
+ * who had asked their OS to stop animation; there was no such block in the
+ * codebase at all.
+ *
+ * Durations go to 0.01ms rather than 0 so transitionend and animationend still
+ * fire and nothing that waits on them hangs.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,406 @@
+/**
+ * ─── Primitives ──────────────────────────────────────────────────────────────
+ * The shared vocabulary: button, input, card, badge, table, dialog, and the
+ * status blocks every page needs.
+ *
+ * Anything used by exactly one component lives beside that component, not here.
+ * Semantic tokens only -- no hex, no rgb(), no tier-1 names.
+ */
+
+/* ── Button ──────────────────────────────────────────────────────────────────
+ * Four variants. The unfilled ones carry --edge-strong, not --edge: a control
+ * boundary the user has to perceive is a WCAG 1.4.11 target at 3.0, and --edge
+ * is decorative at 1.4.
+ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--text-14);
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.btn-primary:hover:not(:disabled) { background: var(--fg); border-color: var(--fg); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--fg);
+  border-color: var(--edge-strong);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--surface-sunken); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg-muted);
+  border-color: transparent;
+}
+.btn-ghost:hover:not(:disabled) { background: var(--surface); color: var(--fg); }
+
+.btn-sm { min-height: 32px; padding: var(--space-1) var(--space-3); font-size: var(--text-12); }
+.btn-lg { min-height: 48px; padding: var(--space-3) var(--space-5); font-size: var(--text-16); }
+
+/* Icon-only. Needs an aria-label; there is nothing to read otherwise. */
+.btn-icon { min-height: 32px; width: 32px; padding: 0; }
+
+/* ── Input ───────────────────────────────────────────────────────────────── */
+.input-group { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.input-group > label {
+  font-size: var(--text-14);
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.input-field {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-16);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.input-field::placeholder { color: var(--fg-subtle); }
+.input-field:hover:not(:disabled) { border-color: var(--fg-muted); }
+.input-field:disabled { background: var(--surface-sunken); cursor: not-allowed; }
+.input-field[aria-invalid='true'] { border-color: var(--danger); }
+
+textarea.input-field { min-height: 96px; resize: vertical; line-height: var(--leading-body); }
+
+.field-error {
+  font-size: var(--text-14);
+  color: var(--danger);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────────
+ * Elevation is a border plus a tight shadow. The four aurora blobs and all
+ * eight backdrop-filters are gone: they repainted continuously on every route,
+ * including idle ones, and blurred glass is not what a calibration certificate
+ * looks like.
+ */
+/* A calibration certificate has no cards. It has rules, columns and dense rows.
+   Every rounded panel here was the design reverting to the mean -- a card is the
+   default answer to "where does this go" and it requires no decision about
+   hierarchy, which is exactly why generated layouts are full of them.
+
+   So a "card" is now a ruled region: a top rule, flush-left content, no
+   floating, no shadow. The border and radius survive only on things that are
+   genuinely objects you act on -- inputs, dialogs, the wallet sheet. */
+.card,
+.glass-card {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--edge-strong);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.card-padded { padding: var(--space-5) 0 0; }
+
+a.card:hover,
+.card-interactive:hover {
+  border-top-color: var(--accent);
+  box-shadow: none;
+}
+
+/* A boxed panel, for the few places something really is a discrete object
+   sitting on the page rather than a section of it. Used deliberately, not by
+   default. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+}
+.panel-padded { padding: var(--space-5); }
+
+/* ── Section index ───────────────────────────────────────────────────────────
+ * Certificates and forms number their clauses. It costs nothing, it is on
+ * concept, and it gives the eye the second hierarchy level that a heading and a
+ * paragraph alone do not provide. */
+.section-index {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--fg-subtle);
+}
+
+/* ── Badge ───────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-12);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+.badge-ok      { color: var(--ok);     border-color: var(--ok); }
+.badge-warn    { color: var(--warn);   border-color: var(--warn); }
+.badge-danger  { color: var(--danger); border-color: var(--danger); }
+.badge-version { font-family: var(--font-mono); text-transform: none; font-variant-numeric: tabular-nums; }
+
+.badge-active { color: var(--ok); border-color: var(--ok); }
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.table { width: 100%; font-size: var(--text-14); }
+.table th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--edge-strong);
+  font-size: var(--text-12);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--fg-subtle);
+}
+.table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--edge);
+  vertical-align: top;
+}
+.table tr:last-child td { border-bottom: none; }
+
+/* ── Dialog ──────────────────────────────────────────────────────────────── */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+.dialog {
+  width: min(440px, 100%);
+  max-height: min(80vh, 640px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-3);
+}
+
+/* ── Hash ────────────────────────────────────────────────────────────────────
+ * The plain full-width presentation. The grouped ribbon that makes the hash the
+ * typographic hero is its own component; this is the fallback for places that
+ * need the value without the ceremony.
+ */
+.hash-display {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  line-height: var(--leading-mono);
+  word-break: break-all;
+}
+
+/* Dense cells only: first6…last4, always with the full value reachable via
+   the title tooltip and an sr-only span (see HashCell.jsx, which pairs with
+   this class everywhere a hash appears outside HashRibbon). */
+.hash-truncated {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hash-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hash-cell-copy {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+}
+
+/* ── Status blocks ───────────────────────────────────────────────────────────
+ * Scoped to the region that failed. Never a full-page takeover for one widget,
+ * and never a toast as the only channel.
+ */
+.form-error,
+.region-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  font-size: var(--text-14);
+}
+
+/* Confirmed on-chain, not yet indexed. Deliberately not an error colour: the
+   anchor exists, which is the part that matters. */
+.sync-pending {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--warn);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-14);
+  color: var(--fg);
+}
+
+.tx-result {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--ok);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+}
+.tx-result-pending { border-color: var(--warn); }
+
+.wallet-precondition {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-14);
+  color: var(--fg-muted);
+}
+
+/* ── Empty and loading ───────────────────────────────────────────────────────
+ * An empty state states the cause and the next action. "No datasets." is a
+ * dead end; it names a fact and offers nothing.
+ */
+/* Flush left, not centred. An empty state centred in a tall viewport is the
+   most recognisable generated-UI arrangement there is -- icon, title, subtitle,
+   button, all stacked down the middle of an ocean of nothing. It is centred
+   because centring is easy, not because the content is a centred thing. Ruled
+   and left-aligned, it reads as a register with no entries yet, which is what
+   it is. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-8) 0;
+  border-top: 1px solid var(--edge-strong);
+  text-align: left;
+  color: var(--fg-muted);
+}
+.empty-state h3 { color: var(--fg); }
+.empty-state p { max-width: 52ch; }
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10);
+  color: var(--fg-muted);
+}
+
+/* Skeletons match the geometry of what replaces them and are delayed 200ms, so
+   a fast response never flashes one. The delay is the animation-delay below;
+   opacity starts at 0. */
+.skeleton {
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  animation: skeleton-in 1ms var(--ease-out) 200ms forwards;
+}
+@keyframes skeleton-in { to { opacity: 1; } }
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--edge-strong);
+  border-top-color: var(--accent);
+  border-radius: var(--radius-pill);
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ───────────────────────────────────────────────────────────────────
+ * Never the only channel for anything critical. The live region is in App.
+ */
+.toast-container {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--edge-strong);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-2);
+  font-size: var(--text-14);
+  pointer-events: auto;
+}
+.toast-success { border-left-color: var(--ok); }
+.toast-error   { border-left-color: var(--danger); }
