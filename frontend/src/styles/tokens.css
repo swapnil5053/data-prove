@@ -1,0 +1,186 @@
+/**
+ * ─── Design tokens ───────────────────────────────────────────────────────────
+ *
+ * Two tiers. Tier 1 is the palette and is never referenced outside this file.
+ * Tier 2 is semantic and is the only thing components are allowed to name.
+ *
+ * The semantic set is fixed at 15. A sixteenth requires a written justification
+ * here, in this header, naming what it does that none of the existing 15 can.
+ * The count is the point: the previous system had 6 accent colours and 5
+ * gradients, which is not a system, it is a palette with opinions.
+ *
+ * No hex, rgb() or hsl() appears anywhere in the codebase except below.
+ * scripts/verify/gates.mjs enforces that.
+ *
+ * ── The direction: cyanotype ─────────────────────────────────────────────────
+ * Metrology, by way of the technical drawing. Blueprints, drafting film,
+ * calibration certificates, instrument faceplates.
+ *
+ * The distinguishing move is that the ground itself is blue -- a pale blue-grey
+ * drafting paper in light, deep prussian in dark -- rather than a neutral with
+ * a blue accent painted on. Almost nothing in this category does that, which is
+ * the point.
+ *
+ * The first attempt at this system was a near-black ground with a single mint
+ * accent and thin grey text. That is the dark-console look every generated
+ * developer tool lands on, and it is recorded here so it does not get
+ * rediscovered: the failure was not the hexes, it was reaching for a dark
+ * neutral and one saturated accent, which is the default, not a decision.
+ *
+ * Light is the default and the theme this was designed in. Dark is a swap.
+ *
+ * ── Contrast ─────────────────────────────────────────────────────────────────
+ * Every ratio below is computed, not estimated, and verified at definition time
+ * by scripts/verify/contrast.mjs. Changing any value here without re-running it
+ * is how a system quietly stops meeting AA.
+ *
+ *   pairing                             light    dark
+ *   fg / canvas                         13.49   14.95
+ *   fg-muted / canvas                    6.16    8.13
+ *   fg-subtle / canvas                   5.21    6.57
+ *   accent / canvas                      6.34    9.22
+ *   warn / canvas                        5.22    8.19
+ *   danger / canvas                      5.57    6.38
+ *   accent-fg / accent (button fill)     8.22    8.74
+ *   edge-strong / canvas (1.4.11: 3.0)   3.21    3.36
+ *   fg-subtle / surface-sunken           4.59    7.03
+ *
+ * The tightest pairing against canvas is edge-strong at 3.21 against a 3.0
+ * floor, and no text pairing sits below 4.59 against ANY of the three surface
+ * tokens (canvas, surface, surface-sunken) -- fg-subtle was the one token
+ * that didn't clear surface-sunken (4.39, under the 4.5 floor) until its
+ * light-theme value was retuned specifically against that pairing. It is now
+ * safe on every surface by construction, not by convention -- no call site
+ * has to remember which backgrounds it's allowed on. Any new token still
+ * needs its own row here checked against all three surfaces, not just canvas,
+ * before it's assumed safe.
+ */
+
+:root {
+  /* ── Tier 1: primitives. Never referenced in markup. ────────────────────── */
+  /* A blue-grey ramp, not a neutral one. Every step carries the same slight
+     cyan cast, which is what keeps the ground reading as drafting paper rather
+     than as grey with a blue thing on it. */
+  --cyan-975: #061218;
+  --cyan-950: #0A1A22;
+  --cyan-900: #12252F;
+  --cyan-800: #223A46;
+  --cyan-600: #52707E;
+  --cyan-500: #6B7F8D;
+  --cyan-400: #8AA1AD;
+  --cyan-350: #9DB3BE;
+  --cyan-300: #B4C2CA;
+  --cyan-200: #C7D2D9;
+  --cyan-150: #DCE3E7;
+  --cyan-100: #EAEFF2;
+  --cyan-050: #F5F8F9;
+
+  --ink-900: #0F1B22;
+  --ink-700: #42535D;
+  --ink-600: #4C5E68;
+
+  --prussian-700: #14556E;
+  --prussian-300: #6FC6E8;
+  --amber-700:    #7E5209;
+  --amber-400:    #E0A63C;
+  --rust-700:     #A32A1C;
+  --rust-400:     #F0776A;
+
+  /* ── Tier 2: semantic. Light is the default. 15 tokens. ─────────────────── */
+  --canvas:         #DCE3E7;
+  --surface:        #EAEFF2;
+  --surface-sunken: #C7D2D9;
+
+  --fg:        #0F1B22;
+  --fg-muted:  #42535D;
+  --fg-subtle: #4A5B65;
+
+  /* --edge is decorative separators only. Any boundary the user must perceive
+     to operate a control -- input, select, checkbox, unfilled button -- uses
+     --edge-strong, which is the one that clears WCAG 1.4.11 at 3.0. */
+  --edge:        #B4C2CA;
+  --edge-strong: #6B7F8D;
+
+  /* One accent. Prussian is the interactive colour, the brand colour and the
+     verified state, all at once. --warn and --danger are states only and are
+     never used decoratively. */
+  --accent:    #14556E;
+  --accent-fg: #FFFFFF;
+
+  --ok:     #14556E;
+  --warn:   #7E5209;
+  --danger: #A32A1C;
+
+  --focus:   #14556E;
+  --overlay: rgb(15 27 34 / .55);
+
+  /* ── Space ──────────────────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+  --space-10: 64px;
+  --space-12: 96px;
+
+  /* ── Radius. Small, but never zero -- zero everywhere is one of the three
+        looks this direction is avoiding. ─────────────────────────────────── */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* ── Elevation is a border plus a tight shadow. Never a glow, never a blur
+        behind glass -- both are gone along with the 8 backdrop-filters. ──── */
+  --elev-1: 0 1px 2px rgb(15 27 34 / .07);
+  --elev-2: 0 2px 8px rgb(15 27 34 / .09);
+  --elev-3: 0 8px 24px rgb(15 27 34 / .13);
+
+  /* ── Motion. Enter cheap, exit instant. ─────────────────────────────────── */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(.2, .8, .3, 1);
+}
+
+/**
+ * Dark mode is a variable swap and nothing else. No component branches on the
+ * theme, no `dark:` variants, no duplicated rules. If a component needs to know
+ * which theme is active, the token set is wrong.
+ *
+ * The attribute is set by the inline script in index.html before first paint,
+ * so there is no flash of the wrong theme.
+ */
+[data-theme="dark"] {
+  /* Deep prussian, not near-black. The ground keeps its blue at both ends of
+     the range so the two themes read as one product photographed under
+     different light, rather than as two products. */
+  --canvas:         #0A1A22;
+  --surface:        #12252F;
+  --surface-sunken: #061218;
+
+  --fg:        #E4EDF2;
+  --fg-muted:  #9DB3BE;
+  --fg-subtle: #8AA1AD;
+
+  --edge:        #223A46;
+  --edge-strong: #52707E;
+
+  --accent:    #6FC6E8;
+  --accent-fg: #06202B;
+
+  --ok:     #6FC6E8;
+  --warn:   #E0A63C;
+  --danger: #F0776A;
+
+  --focus:   #6FC6E8;
+  --overlay: rgb(6 18 24 / .65);
+
+  /* Shadows read as dirt on a dark ground, so elevation there leans on the
+     border and the surface step instead of the shadow. */
+  --elev-1: 0 1px 2px rgb(0 0 0 / .40);
+  --elev-2: 0 2px 8px rgb(0 0 0 / .50);
+  --elev-3: 0 8px 24px rgb(0 0 0 / .60);
+}

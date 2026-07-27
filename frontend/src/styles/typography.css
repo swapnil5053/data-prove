@@ -1,0 +1,153 @@
+/**
+ * ─── Typography ──────────────────────────────────────────────────────────────
+ *
+ * Three faces, each with one job.
+ *
+ *   Display  Archivo Variable at font-stretch 118%   instrument-faceplate lettering
+ *   Body     IBM Plex Sans Variable                  prose, labels, buttons, nav
+ *   Data     IBM Plex Mono                           every hash, key, signature, count
+ *
+ * Self-hosted via fontsource. The Google Fonts CDN link is gone: it was loading
+ * Inter and nothing else, while --font-mono asked for 'JetBrains Mono' and
+ * 'Fira Code', neither of which was ever loaded from anywhere. Every hash in the
+ * product had been rendering in the browser's default monospace since the file
+ * was written, silently, which is the whole reason the import block below is
+ * this fussy.
+ */
+
+/* ── Import order matters ───────────────────────────────────────────────────
+ *
+ * wdth.css, NOT index.css. @fontsource-variable/archivo/index.css ships the
+ * weight axis alone -- verified: it declares `font-weight: 100 900` and no
+ * font-stretch descriptor at all. Import that one and every expanded heading
+ * silently renders at normal width, with no error and nothing in devtools to
+ * suggest why the design looks wrong.
+ *
+ * wdth.css declares `font-stretch: 62% 125%` alongside `font-weight: 100 900`,
+ * which is where the 118% below has to come from.
+ *
+ * There is also no family called "Archivo Expanded". The family is
+ * 'Archivo Variable' and expansion is font-stretch, not a family name.
+ */
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/ibm-plex-sans/index.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+:root {
+  --font-display: 'Archivo Variable', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Scale. These seven values, and no intermediates. A 20px or a 28px appearing
+     in a component means the scale was wrong, not that the value was needed.
+     (--text-60 was never referenced anywhere in the app and is gone.)
+
+     rem, not px -- px on a font-size ignores a user's browser zoom/font-size
+     setting entirely, which is the one accessibility failure the general
+     rules explicitly ban. Everything here is relative to the 112.5% root lift
+     in reset.css, so 1rem = ~18px: the body row below reads as 18px in a
+     default browser, not 16.
+
+     The two heading tokens (--text-32, --text-44) are no longer their literal
+     px name -- 2.25rem/3rem land at 36px/48px at the default root, wider than
+     32/44 on purpose, so h1/h2 pull further away from body instead of merely
+     scaling with it. Renaming every one of the ~75 call sites across the app
+     for two drifted names was a bigger refactor than the ask; the values are
+     what render, the names are legacy labels at this point. */
+  --text-12: 0.75rem;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-24: 1.5rem;
+  --text-32: 2.25rem;
+  --text-44: 3rem;
+
+  --leading-display: 1.2;
+  --leading-body: 1.55;
+  --leading-mono: 1.4;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/**
+ * Display. The expanded width is the memorable move, so it is applied
+ * consistently and never below 24px -- Archivo at 118% is faceplate lettering at
+ * heading sizes and merely wide and awkward at body sizes.
+ *
+ * Uppercase is reserved for 12px eyebrow labels. Never a heading, never a button.
+ */
+.t-display,
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  font-weight: 600;
+  line-height: var(--leading-display);
+  letter-spacing: 0;
+}
+
+h1 { font-size: var(--text-44); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: var(--text-32); letter-spacing: -0.02em; }
+h3 { font-size: var(--text-24); }
+
+/* Below 32px the negative tracking closes the counters too far at this width. */
+h4, h5, h6 {
+  font-family: var(--font-body);
+  font-size: var(--text-18);
+  font-weight: 600;
+  line-height: var(--leading-display);
+}
+
+/* Eyebrow: the only place uppercase is allowed. */
+.t-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--text-12);
+  font-weight: 600;
+  line-height: var(--leading-body);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--fg-subtle);
+}
+
+.t-body-sm { font-size: var(--text-14); line-height: var(--leading-body); }
+.t-muted { color: var(--fg-muted); }
+/* --fg-subtle clears 4.5:1 against every surface token, canvas through
+   surface-sunken (see tokens.css) -- safe anywhere in the app, not just on
+   canvas. Still never below 14px; that constraint is about size, not colour. */
+.t-subtle { color: var(--fg-subtle); font-size: var(--text-14); }
+
+/**
+ * Data. Every hash, pubkey, signature, transaction id, timestamp, byte count and
+ * version number. If it is a value rather than prose, it is set in mono.
+ */
+.t-mono,
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  line-height: var(--leading-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * Tabular figures on anything in a column or anything that updates in place.
+ * Proportional figures in a stats row make the numbers jitter as they change,
+ * and columns of them fail to line up -- it is one of the most visible tells
+ * there is. Applied by default to mono, and available on its own for display
+ * numerals, which need it just as much.
+ */
+.t-tabular,
+.stat-value,
+td, th {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Prose measure. Long lines are a legibility problem, not a layout preference. */
+.t-prose { max-width: 68ch; }
