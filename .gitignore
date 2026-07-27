@@ -31,3 +31,9 @@ scratch_tests/
 # Anchor / Solana build artifacts
 target/
 .anchor/
+
+# Gate output is regenerated on demand; only the runbook is tracked.
+docs/evidence/*.txt
+
+# local editor/agent state
+.claude/settings.local.json

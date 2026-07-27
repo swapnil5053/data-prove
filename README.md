@@ -8,53 +8,60 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green?style=flat-square&logo=mongodb)](https://www.mongodb.com/)
 [![Redis](https://img.shields.io/badge/Redis-Queue-red?style=flat-square&logo=redis)](https://redis.io/)
 
+![DataProve landing page](docs/landing.png)
+
 ---
 
 ## Project Overview
 
-DataProve is a decentralized provenance tracking system built to guarantee the integrity and version history of scientific research datasets. 
+DataProve is a decentralized provenance tracking system built to guarantee the integrity and version history of scientific research datasets.
 
-In modern research, proving that a dataset existed at a specific time—and has not been tampered with since—is a major challenge. DataProve solves this by anchoring cryptographic SHA-256 hashes of datasets onto the Solana blockchain. This guarantees an immutable timeline and proof-of-existence, entirely without exposing the raw, sensitive underlying research data to the public.
+In modern research, proving that a dataset existed at a specific time — and has not been tampered with since — is a major challenge. DataProve solves this by anchoring cryptographic SHA-256 hashes of datasets onto the Solana blockchain. This guarantees an immutable timeline and proof-of-existence, entirely without exposing the raw, sensitive underlying research data to the public.
 
 ---
 
 ## Key Features
 
-* **Local-First Zero-Trust Hashing:** Computes SHA-256 checksums inside the client browser. Sensitive research files never leave the researcher's local machine, ensuring complete data privacy.
-* **Ed25519 Payload Authentication:** Secures database write operations (registration, updates, transfers) by requiring clients to cryptographically sign API payloads. Signatures are verified server-side using TweetNaCl to guarantee non-repudiation.
-* **Asynchronous RPC Verification:** Processes high-throughput writes instantly by enqueuing verification jobs to a BullMQ queue, allowing a background worker to fetch and decode Solana transaction logs asynchronously without blocking the main API thread.
-* **Atomic Database Transactions:** Employs MongoDB multi-document ACID transactions via Mongoose sessions and atomic `$inc` operators to completely eliminate race conditions and prevent partial writes during high-concurrency updates.
+* **Client-side hashing.** SHA-256 checksums are computed inside the browser. Research files never leave the researcher's machine — only the digest and its metadata are ever transmitted.
+* **Ed25519 payload authentication.** Every write (registration, update, transfer) requires the client to cryptographically sign the API payload. Signatures are verified server-side with TweetNaCl, so a request cannot be forged or replayed by anything that doesn't hold the key.
+* **Asynchronous RPC verification.** Writes return immediately and enqueue a BullMQ job; a background worker fetches and decodes the Solana transaction out-of-band, so chain latency never blocks the API thread.
+* **Atomic database transactions.** Register and update run inside MongoDB multi-document transactions via Mongoose sessions, with atomic `$inc` on the version counter — no partial writes, no lost updates under concurrent revisions.
+* **Public verification.** Anyone can paste a digest or hash a file locally and check it against the registry. No account, no wallet, no dependency on this service staying online.
+* **Real-time status.** Socket.io pushes the verification result to the page the moment the worker settles it.
 
 ---
 
 ## How It Works (User Flow)
 
-1. **Hash Generation:** A researcher selects a dataset file in the browser. The React frontend computes the SHA-256 hash locally.
-2. **Blockchain Anchoring:** The user's Solana wallet (e.g., Phantom) prompts them to sign and broadcast a transaction containing this hash to the Solana Devnet.
-3. **Payload Submission:** The frontend sends the transaction signature and dataset metadata to the Express API, authenticating the request with an Ed25519 signature.
-4. **Asynchronous Verification:** The backend immediately returns a success response to the user while a background worker independently queries the Solana blockchain to verify the transaction. Once verified, the database is permanently updated.
+1. **Hash generation.** A researcher selects a dataset file in the browser. The React frontend computes the SHA-256 hash locally.
+2. **Blockchain anchoring.** The user's Solana wallet (e.g. Phantom) prompts them to sign and broadcast a transaction containing this hash to Solana devnet.
+3. **Payload submission.** Once the transaction confirms, the frontend sends the signature and dataset metadata to the Express API, authenticating the request with an Ed25519 signature.
+4. **Asynchronous verification.** The backend returns immediately while a background worker independently queries Solana to verify the transaction. Only then is the record marked `verified`.
+
+If the chain confirms but the API is unreachable, the anchor still exists — the record is queued in `localStorage`, retried on the next load, and reported as pending rather than failed.
 
 ---
 
 ## Architecture & Trust Model
 
-### Eliminating Frontend Trust Vulnerabilities
-Traditional Web3 designs suffer from frontend trust vulnerabilities where the backend API blindly accepts client-reported transaction hashes. DataProve eliminates this vector by separating the write request from on-chain confirmation. 
+### Eliminating frontend trust vulnerabilities
+
+Traditional Web3 designs suffer from frontend trust vulnerabilities where the backend API blindly accepts client-reported transaction hashes. DataProve eliminates this vector by separating the write request from on-chain confirmation.
 
 The backend accepts payload writes under a `pending` status, enqueues the transaction signature into a BullMQ queue, and offloads verification to a background worker. The worker queries a trusted Solana RPC endpoint directly, decodes the transaction data, and asserts that the signed on-chain hash matches the database value before transitioning the status to `verified`.
 
-### Architectural Flow
+The client is also blocked from creating an unanchored record in the first place: the API rejects any register or update request that arrives without a transaction signature, so the database cannot become the source of truth by accident.
+
+### Architectural flow
 
 ```mermaid
 graph TD
     subgraph Frontend
         Client[Client Browser]
     end
-
     subgraph Solana Blockchain
         Solana[Solana Devnet / RPC]
     end
-
     subgraph Backend Infrastructure
         API[Express API]
         Redis[(Redis / BullMQ)]
@@ -78,85 +85,102 @@ graph TD
 
 ## Tech Stack
 
-* **Frontend:** React 18, Vite, Framer Motion, Socket.io Client
-* **Backend:** Node.js, Express, TypeScript (Strict Mode), TweetNaCl, Mongoose
-* **Database:** MongoDB 7 (Single-node replica set for ACID transaction support)
+* **Frontend:** React 18, Vite, Framer Motion, Socket.io client
+* **Backend:** Node.js, Express, TypeScript (strict mode), TweetNaCl, Mongoose
+* **Database:** MongoDB 7 (single-node replica set, for ACID transaction support)
 * **Infrastructure:** Docker, Docker Compose, Redis 7 (BullMQ broker)
+* **On-chain:** Anchor (Rust), Solana devnet
+
+The frontend uses no UI framework. Colour, type and spacing are two-tier CSS custom properties in `frontend/src/styles/`, and `scripts/verify/contrast.mjs` computes every foreground/background pairing against WCAG AA so a token change can't quietly break contrast.
 
 ---
 
 ## Project Structure
 
 ```text
-dataprove/
-├── backend/                # Express API & Background Workers
+data-prove/
+├── backend/                # Express API & background workers
 │   ├── src/
-│   │   ├── middleware/     # Ed25519 Auth & validation
+│   │   ├── middleware/     # Ed25519 auth & validation
 │   │   ├── models/         # Mongoose schemas
 │   │   ├── queues/         # BullMQ configuration
 │   │   ├── routes/         # API endpoints
+│   │   ├── services/       # DB + Solana service layer
 │   │   └── workers/        # Async Solana RPC verifier
 │   ├── Dockerfile
 │   └── package.json
-├── frontend/               # React / Vite Application
+├── frontend/               # React / Vite application
 │   ├── src/
 │   ├── Dockerfile
 │   └── package.json
-├── infra/                  # Infrastructure configurations
+├── programs/               # Anchor (on-chain) program
+├── infra/
 │   └── mongo-init.js       # Replica set initialization
 ├── scripts/
-│   └── bootstrap.js        # Environment setup automation
+│   ├── bootstrap.js        # Environment setup automation
+│   ├── seed.mjs            # Demo dataset seeding
+│   └── verify/             # Contrast, PDA and IDL checks
 ├── docker-compose.dev.yml  # Multi-container orchestration
-└── package.json            # Root configuration
+└── package.json
 ```
 
 ---
 
 ## Getting Started
 
-The entire development stack is containerized; a single command boots the stack. 
-
 ### Prerequisites
-Make sure you have the following installed on your local machine:
-* Node.js (v18 or higher)
-* Docker Desktop (must be running)
-* A Solana browser wallet (like Phantom) set to **Devnet**.
 
-### Quick Start (One-Command Boot)
+* Node.js 20.19 or higher (`mongoose@9` requires it)
+* Docker Desktop, running
+* A Solana browser wallet such as Phantom, set to **Devnet**
 
-1. Clone the repository and navigate into the root directory:
-   ```bash
-   git clone [https://github.com/swapnil5053/data-prove.git](https://github.com/swapnil5053/data-prove.git)
-   cd data-prove
-   ```
+### Quick start
 
-2. Install the root dependencies and start the Docker stack:
-   ```bash
-   npm install
-   ```
+```bash
+git clone https://github.com/swapnil5053/data-prove.git
+cd data-prove
+npm install
+npm run dev
+```
 
-The `npm run dev` command executes a bootstrap script to generate missing configuration (`.env`) files, then starts the Docker Compose services to build and run MongoDB (as a replica set), Redis, the Express API, the background worker, and the React frontend.
+`npm run dev` runs a bootstrap script to generate any missing `.env` files, then starts Docker Compose: MongoDB as a replica set, Redis, the Express API, the verification worker and the React frontend.
 
-3. **Access the Application:**
-   * **Frontend UI:** [http://localhost:5173](http://localhost:5173)
-   * **API Health Check:** [http://localhost:3001/api/health](http://localhost:3001/api/health)
+* **Frontend:** [http://localhost:5173](http://localhost:5173)
+* **API health:** [http://localhost:3001/api/health](http://localhost:3001/api/health)
+
+### Running the servers outside Docker
+
+Faster to iterate on. Databases stay containerized:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d mongodb redis mongo-init
+
+cd backend  && npm install && npm run dev    # :3001
+cd frontend && npm install && npm run dev    # :5173
+
+node scripts/seed.mjs                        # five demo datasets
+```
+
+> **MongoDB from the host:** the container publishes **27018**, and the replica set advertises itself under its Docker hostname. Connect with `?directConnection=true` — with `?replicaSet=rs0` the driver discovers `mongodb:27017` and tries to reach a name that doesn't resolve outside the Docker network, producing a server-selection timeout that looks exactly like a wrong port.
 
 ---
 
 ## Environment Variables
 
-The following variables are utilized across the stack. These are automatically generated from `.env.example` during the bootstrap phase.
+Generated from `.env.example` during bootstrap.
 
 | Variable | Service | Default | Purpose |
 | :--- | :--- | :--- | :--- |
-| `PORT` | Backend | `3001` | Express API network port. |
-| `MONGO_URI` | Backend | `mongodb://localhost:27018/dataprove` | MongoDB connection URL. |
-| `REDIS_HOST` | Backend | `127.0.0.1` | Redis instance hostname. |
-| `SOLANA_RPC_URL` | Backend | `https://api.devnet.solana.com` | Solana RPC node endpoint. |
-| `ALLOWED_ORIGINS` | Backend | `http://localhost:5173` | CORS whitelist for client origins. |
-| `VITE_API_BASE_URL`| Frontend| `http://localhost:3001` | API base URL for network/WebSocket calls.|
+| `PORT` | Backend | `3001` | Express API network port |
+| `MONGO_URI` | Backend | `mongodb://localhost:27018/dataprove?directConnection=true` | MongoDB connection URL |
+| `REDIS_HOST` / `REDIS_PORT` | Backend | `127.0.0.1` / `6379` | Redis (BullMQ broker) |
+| `SOLANA_RPC_URL` | Backend | `https://api.devnet.solana.com` | Solana RPC node endpoint |
+| `ALLOWED_ORIGINS` | Backend | `http://localhost:5173` | CORS whitelist for client origins |
+| `VITE_API_BASE_URL` | Frontend | `http://localhost:3001` | API base URL for network/WebSocket calls |
+| `VITE_SOLANA_CLUSTER` | Frontend | `devnet` | Cluster the client connects to |
 
 ---
-## Contributors
-- [Pritham](https://github.com/preeeetham)
-- [Swapnil Kumar](https://github.com/swapnilsk)
+
+## Status
+
+Register, update, transfer, deactivate, hash verification and version history all work end-to-end against Solana devnet. Deployed to devnet only; the on-chain program has not been audited.
