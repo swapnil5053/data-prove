@@ -1,0 +1,234 @@
+{
+  "note": "Generated from frontend/src/services/solana.js BEFORE the Phase 0.5 Anchor change. Seeds: [\"dataset\", datasetId, authority] and [\"version\", datasetId, u32le]. If any of these change, existing on-chain records are orphaned.",
+  "programId": "FkZMTjPTBGEWUE2dRbdjLBjMPE4gwt1ME5G3qg3xbXwK",
+  "generatedAt": "2026-07-26T15:13:20.820Z",
+  "dataset": [
+    {
+      "datasetId": "ds_0001",
+      "authority": "11111111111111111111111111111112",
+      "pda": "CzcJMsi9yhZ1BajKeavzpxR1F4BBuyX9cAu9m9mMng3b"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "authority": "11111111111111111111111111111112",
+      "pda": "FYeo2EderwQ6Mp29L2eypNg4VPH1bXmLhqwziAvL8Wtk"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "authority": "11111111111111111111111111111112",
+      "pda": "AXj8W26CRdF6uPM4c19oYDuU83vQzV74c3PRAGNCWDcw"
+    },
+    {
+      "datasetId": "a",
+      "authority": "11111111111111111111111111111112",
+      "pda": "5TQNU8SZMBqvWfFSWBbTW5MFDzcfjwzsP2vdQzN78M3G"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "authority": "11111111111111111111111111111112",
+      "pda": "4wTKUf8jJvbCYaVCdEiQ5BdKWdPfavNiEzAFgpM9wztc"
+    },
+    {
+      "datasetId": "ds_0001",
+      "authority": "FkZMTjPTBGEWUE2dRbdjLBjMPE4gwt1ME5G3qg3xbXwK",
+      "pda": "8QhcssJP2x6tZVU7wrk29AS491o1HyE1xvrtJWsNTQZh"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "authority": "FkZMTjPTBGEWUE2dRbdjLBjMPE4gwt1ME5G3qg3xbXwK",
+      "pda": "6TuPXtgjDRSej49M6V9ZAMs4KTMZRubAy7mDL1Ts6Wjv"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "authority": "FkZMTjPTBGEWUE2dRbdjLBjMPE4gwt1ME5G3qg3xbXwK",
+      "pda": "9ZDYqHupE4FJ5qiYBPpLLQ1uKNTa3b8j4wJhk4jhf1Qg"
+    },
+    {
+      "datasetId": "a",
+      "authority": "FkZMTjPTBGEWUE2dRbdjLBjMPE4gwt1ME5G3qg3xbXwK",
+      "pda": "3AQNHnyusu3xTsJcsbxcMHCtfKSbt2jwbVHKE84jfFgi"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "authority": "FkZMTjPTBGEWUE2dRbdjLBjMPE4gwt1ME5G3qg3xbXwK",
+      "pda": "9td1cnwAtT7oFuZUptdZ94j6zDLhuPdaZDHyDHs1j5Fg"
+    },
+    {
+      "datasetId": "ds_0001",
+      "authority": "So11111111111111111111111111111111111111112",
+      "pda": "57g9C29D8y1DJGpQrTo6w9bKTGpCRzbceDtpkU83VAnd"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "authority": "So11111111111111111111111111111111111111112",
+      "pda": "2St4ynT42VbgD4pSNi2dHJUj7R8x4efSEo6EMXdEbxkV"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "authority": "So11111111111111111111111111111111111111112",
+      "pda": "65ikLQzmFmbhj66NS4ewKaroX6HNccRxhv4ahzkfqigN"
+    },
+    {
+      "datasetId": "a",
+      "authority": "So11111111111111111111111111111111111111112",
+      "pda": "Bc2morXFGtzrNneU4ZrJNYN2MSJTk4JmdqpCMDUpUGUF"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "authority": "So11111111111111111111111111111111111111112",
+      "pda": "EcEKyb1rEyFHv5PHuY2Ef4kWN8uKs6gMjrPxoZZT9NuS"
+    },
+    {
+      "datasetId": "ds_0001",
+      "authority": "SysvarRent111111111111111111111111111111111",
+      "pda": "5MpCeE5TLACWdAzo3yqYi1szuLCLiTfnaNk1XpvJNLCt"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "authority": "SysvarRent111111111111111111111111111111111",
+      "pda": "CHYH3Jnhi3Phxm92CaAbB12yggX5XWCUfRA5T1NC7k3F"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "authority": "SysvarRent111111111111111111111111111111111",
+      "pda": "DQkcQhcP9eDQ78X1g3u7LtkhUAdSw3k2mPowED3SwsU1"
+    },
+    {
+      "datasetId": "a",
+      "authority": "SysvarRent111111111111111111111111111111111",
+      "pda": "28n8N1BXuu82BN6YphscffHAY3unnMm4bXsnTymP8tTY"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "authority": "SysvarRent111111111111111111111111111111111",
+      "pda": "CiUKVDRbVk5567DcNnECQSzgJqV7o2pmuygWhe5A7Ne3"
+    }
+  ],
+  "version": [
+    {
+      "datasetId": "ds_0001",
+      "versionNumber": 1,
+      "pda": "73daUaCK1pYHMzV5Wt68ZWPrSfmKw4nA8VSTFp68tTxt"
+    },
+    {
+      "datasetId": "ds_0001",
+      "versionNumber": 2,
+      "pda": "CyvkrFFTxhd7gGGA6BXrxMDhGBM4QTPhNvXLZaRJyjLJ"
+    },
+    {
+      "datasetId": "ds_0001",
+      "versionNumber": 3,
+      "pda": "2Jpq38KtNtAPmc1LYBRrngZvXd4YP6tm7Z7FKHiuQdo8"
+    },
+    {
+      "datasetId": "ds_0001",
+      "versionNumber": 255,
+      "pda": "2kucP16FaD6DztStQLbfuVfngcGQbPn4M5MVt6dNiQyP"
+    },
+    {
+      "datasetId": "ds_0001",
+      "versionNumber": 65536,
+      "pda": "BentiBwiJzyy6i4s9DR6KM3zewCWnv7aRLyEU7EimSY8"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "versionNumber": 1,
+      "pda": "CWNzqDG9LfgSTVSFP5kLdN6QHTpnrqm6P2EAbTU2KbLf"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "versionNumber": 2,
+      "pda": "CbuFbzSp1UHqpXnVgXysM978xLMdmV3AGsxHA21hXZDC"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "versionNumber": 3,
+      "pda": "E2h1H6h9qy6YpHTVmMACQKVHehXQCKFeH74n1BTaL1bb"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "versionNumber": 255,
+      "pda": "2AfVD7cWSzaH7MjTByNjccWXqPraeTg6tQmxWRbGXQsx"
+    },
+    {
+      "datasetId": "genome-variant-2024",
+      "versionNumber": 65536,
+      "pda": "6WvKPdGNBdp1qqU35xJKu1LEGnWwomZvAfJrVcZHut6B"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "versionNumber": 1,
+      "pda": "3Btevrxpf1q1xjiC5QAs6hEcBU68Gge6mRdipD8y6CGP"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "versionNumber": 2,
+      "pda": "8DqA4fUF31uQYz5yEjj9ufSpganJkB28fKbVhyNR7NNT"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "versionNumber": 3,
+      "pda": "DUfshseiE4YzdKvgCVLte13VnWSStXWx8dnJriBFvuir"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "versionNumber": 255,
+      "pda": "AgaeLwD2fc1JiAK6DtWzSB8EEaXeFuvp7Aeqk7BiVkRi"
+    },
+    {
+      "datasetId": "climate-model-v2",
+      "versionNumber": 65536,
+      "pda": "9xwUGMrqEgaDdf6jWsfpzwzwFw7ihecoDFGwAhz6vRbe"
+    },
+    {
+      "datasetId": "a",
+      "versionNumber": 1,
+      "pda": "GZh1AFzVa5WAwMMg9CgL3BbnPqSMjMPr7YpAtyXeD6Vx"
+    },
+    {
+      "datasetId": "a",
+      "versionNumber": 2,
+      "pda": "2qHusRkDCAQdvgof4g36nvJmTdga3y4xDuhn3axzfRmW"
+    },
+    {
+      "datasetId": "a",
+      "versionNumber": 3,
+      "pda": "4N6pyQb32bd8t7SbJJeEX6UbGKFPKJPqxKwReVMVma8R"
+    },
+    {
+      "datasetId": "a",
+      "versionNumber": 255,
+      "pda": "DirhBq6nQXD3JZhp8KMB14JAf6DQCKQbQwKJ18vKjLqn"
+    },
+    {
+      "datasetId": "a",
+      "versionNumber": 65536,
+      "pda": "6mzahSVUkwahoFxEFy2Bfjq6DrhELxviy8s5F25FnoUj"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "versionNumber": 1,
+      "pda": "DZtvRg2h7hXG3ybJ1iXzK9HeAASFVvRFMbbMoodvJGqo"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "versionNumber": 2,
+      "pda": "7ALNCtLbUJF8MW6stAb4nCTJSZq4Y8wkrd9UEUqDPBfJ"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "versionNumber": 3,
+      "pda": "BnLpirBrU4aG4sBPj3EmCNjSnisC4wzzzfQruUTSXoxH"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "versionNumber": 255,
+      "pda": "2KYxAgnufYkNbJ4aXANFoTA2U9JJNVzyQijgqEGMMMpM"
+    },
+    {
+      "datasetId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "versionNumber": 65536,
+      "pda": "28jRJeUoCzGFk4NVvdACeQ7CNaW3FsWLTUPmH9kERXGm"
+    }
+  ]
+}
