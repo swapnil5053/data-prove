@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js'
+import { PublicKey } from '@solana/web3.js'
+import { connection } from '../services/connection'
+import { walletMissing } from '../services/errors'
 
 /**
  * Supported wallets — these are detected from window object
@@ -48,7 +50,6 @@ export function WalletProvider({ children }) {
   const [walletName, setWalletName] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [detectedWallets, setDetectedWallets] = useState([])
-  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed')
 
   // Detect installed wallets on mount (wait a tick for injected scripts)
   useEffect(() => {
@@ -109,6 +110,26 @@ export function WalletProvider({ children }) {
     }
   }, [])
 
+  /**
+   * The adapter object for the currently connected wallet.
+   *
+   * Register and DatasetDetail each re-derived this by reading localStorage and
+   * sniffing window.phantom / window.solflare / window.backpack — the same block
+   * copied four times, in the pages, for something the provider already knows. It
+   * lives here now so there is one answer to "which wallet are we signing with".
+   *
+   * @returns {object} the injected adapter
+   * @throws {DataProveError} WALLET_MISSING when nothing is injected
+   */
+  const getAdapter = useCallback(() => {
+    const savedId = localStorage.getItem('dataprove_wallet');
+    const w = SUPPORTED_WALLETS.find((x) => x.id === savedId);
+    let adapter = null;
+    try { adapter = w?.getAdapter() ?? window?.solana ?? null; } catch { adapter = null; }
+    if (!adapter) throw walletMissing();
+    return adapter;
+  }, []);
+
   const disconnect = useCallback(async () => {
     const savedId = localStorage.getItem('dataprove_wallet')
     const w = SUPPORTED_WALLETS.find(w => w.id === savedId)
@@ -124,7 +145,7 @@ export function WalletProvider({ children }) {
       connected, publicKey, walletName,
       modalOpen, setModalOpen,
       detectedWallets, SUPPORTED_WALLETS,
-      connect, disconnect, connection,
+      connect, disconnect, getAdapter, connection,
     }}>
       {children}
     </WalletContext.Provider>
