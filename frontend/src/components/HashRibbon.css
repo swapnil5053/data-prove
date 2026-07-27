@@ -1,0 +1,107 @@
+/**
+ * ─── Hash ribbon ─────────────────────────────────────────────────────────────
+ * Two rows of eight four-character groups, indexed every fourth group, on a
+ * hairline rule. Semantic tokens only.
+ */
+
+/* A container, so the glyphs size to the band they are in rather than to the
+   viewport. The ribbon appears both in a 1180px full-bleed plate and inside an
+   860px form; a vw-based size that fills the first overflows the second. */
+.ribbon {
+  container-type: inline-size;
+  margin: 0;
+  padding: var(--space-4) 0 0;
+}
+
+.ribbon-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ribbon-label {
+  font-family: var(--font-body);
+  font-size: var(--text-12);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.ribbon-copy {
+  flex: none;
+}
+
+/* The band. The rule beneath is the baseline the groups sit on -- an instrument
+   scale, not a box. Deliberately not a card: boxing it would make it another
+   panel among panels instead of the thing the page is about. */
+.ribbon-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--edge-strong);
+}
+
+/* Groups sit next to each other at their natural width. They were previously
+   flex: 1 1 0, which stretched each of the eight to an eighth of the container
+   -- on a wide screen that put ~200px of air between four-character groups and
+   the digest read as eight unrelated fragments rather than one value. A hash is
+   a single quantity and has to look like one. */
+.ribbon-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.9ch;
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+
+/* Fluid, so the band is always dense regardless of column width. This is the
+   one place the design spends its boldness, and "typographic hero" means the
+   characters are actually large -- eight groups of four should fill the measure,
+   not sit in the middle of it at 18px. Clamped so it never outgrows a phone or
+   swallows a wide desktop. */
+/* Eight groups of four is 32 characters plus 7 gaps. In a monospace face a
+   character is about 0.6em, so filling the measure needs roughly
+   100cqi / (32 x 0.6 + 7) = 3.9cqi. Sized just under that so the row is dense
+   but never touches the edges, and clamped at both ends. */
+.ribbon-chars {
+  font-family: var(--font-mono);
+  font-size: clamp(var(--text-16), 3.7cqi, 46px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: var(--fg);
+}
+
+/* ── Narrow ──────────────────────────────────────────────────────────────────
+ * The ribbon must degrade, never scroll sideways. Below 640px it reflows to
+ * four groups per row (four rows of four) by letting rows wrap; the grouping
+ * and the indices survive, which is the part that carries the meaning.
+ */
+/* Narrow: four groups per row rather than eight, so the band stays dense and
+   never becomes a horizontal scrollbar. Four rows of four still reads as one
+   value; a sideways scroll does not. */
+@media (max-width: 640px) {
+  .ribbon-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--space-2) 1.1ch;
+  }
+
+  .ribbon-group {
+    flex: 0 0 auto;
+  }
+
+  .ribbon-chars {
+    font-size: clamp(var(--text-16), 8cqi, 30px);
+  }
+}
