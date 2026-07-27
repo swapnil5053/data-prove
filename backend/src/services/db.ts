@@ -147,8 +147,16 @@ export async function getVersions(datasetId: string): Promise<IVersion[]> {
   return Version.find({ datasetId }).sort({ versionNumber: 1 }).lean();
 }
 
+/** Escapes regex metacharacters so user input is matched literally, not compiled
+ *  as a pattern. Unescaped, a query string goes straight into `new RegExp`, which
+ *  is both a ReDoS vector (catastrophic backtracking from something like `(a+)+`)
+ *  and lets a search box double as an unintended pattern-matching interface. */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export async function searchDatasets(query: string): Promise<IDataset[]> {
-  const regex = new RegExp(query, 'i');
+  const regex = new RegExp(escapeRegex(query), 'i');
   return Dataset.find({
     isActive: true,
     $or: [{ name: regex }, { description: regex }, { datasetId: regex }],
@@ -170,7 +178,19 @@ export async function getStats() {
   };
 }
 
+/** Carries an HTTP status so routes can map a domain conflict to 409 rather than 500. */
+export class ConflictError extends Error {
+  status = 409;
+  constructor(message: string) { super(message); this.name = 'ConflictError'; }
+}
+
 export interface RegisterPayload {
+  /**
+   * Minted by the client. Required for anything chain-first: the dataset PDA is seeded
+   * on this value, so it has to exist before the transaction is signed, and the server
+   * cannot be the one to invent it. generateDatasetId is kept for the demo seed data.
+   */
+  datasetId?: string;
   name: string;
   description: string;
   fileHash: string;
@@ -185,6 +205,7 @@ export interface RegisterPayload {
  * Register a new dataset.
  */
 export async function registerDataset({
+  datasetId: providedId,
   name,
   description,
   fileHash,
@@ -194,7 +215,7 @@ export async function registerDataset({
   txSignature = '',
   isAuthenticated = false,
 }: RegisterPayload) {
-  const datasetId = generateDatasetId(name, authority);
+  const datasetId = providedId ?? generateDatasetId(name, authority);
   const now = Math.floor(Date.now() / 1000);
   const verificationStatus = txSignature ? 'pending' : 'demo';
 
@@ -244,6 +265,12 @@ export interface UpdatePayload {
   ipfsCid?: string;
   authority: string;
   txSignature?: string;
+  /**
+   * The version the client actually signed for, read from the chain. If it disagrees
+   * with what this record implies, two sessions are updating the same dataset and one
+   * of them is anchoring a version number this row will not match.
+   */
+  expectedVersionNumber?: number;
 }
 
 /**
@@ -256,9 +283,22 @@ export async function updateDataset({
   ipfsCid = '',
   authority,
   txSignature = '',
+  expectedVersionNumber,
 }: UpdatePayload) {
   const dataset = await Dataset.findOne({ datasetId, isActive: true });
   if (!dataset) throw new Error('Dataset not found or inactive');
+
+  // Fast-fail on the concurrent-edit case. Not the source of truth — the verifier
+  // worker reconciles against the confirmed transaction — but it catches the race
+  // here rather than leaving Mongo describing a version the chain never recorded.
+  if (expectedVersionNumber !== undefined &&
+      expectedVersionNumber !== dataset.versionCount + 1) {
+    throw new ConflictError(
+      `Version conflict: this dataset is at v${dataset.versionCount}, so the next version ` +
+      `is v${dataset.versionCount + 1}, but v${expectedVersionNumber} was signed. ` +
+      `Another session updated it. Reload to get the current version.`,
+    );
+  }
 
   if (newFileHash === dataset.currentHash) {
     throw new Error('New file hash is identical to the current version — no changes detected');

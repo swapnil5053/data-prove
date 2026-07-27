@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as db from '../services/db.js';
-import { isValidHash } from '../utils/hash.js';
+import { isValidHash, isValidDatasetId, isValidTxSignature, isValidPubkey } from '../utils/hash.js';
 import { verifyWalletSignature } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -83,7 +83,7 @@ router.get('/verify/:hash', async (req: Request, res: Response) => {
 // ─── POST /api/datasets/register ─────────────────────────────────────────────
 router.post('/register', writeLimiter, verifyWalletSignature, async (req: Request, res: Response) => {
   try {
-    const { name, description, fileHash, ipfsCid, metadataUri, authority, txSignature } = req.body;
+    const { datasetId, name, description, fileHash, ipfsCid, metadataUri, authority, txSignature } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'name is required and must be a non-empty string' });
@@ -95,18 +95,43 @@ router.post('/register', writeLimiter, verifyWalletSignature, async (req: Reques
       return res.status(400).json({ success: false, error: 'Invalid SHA-256 hash (must be exactly 64 lowercase hex characters)' });
     }
 
+    // ── An unanchored dataset must not be creatable ──────────────────────────
+    // This used to be `txSignature: txSignature || ''`, which meant a row could be
+    // written with no on-chain record at all and nothing to distinguish it from a
+    // real one. The client is fixed to sign first; this closes the hole at the
+    // server end so a future client cannot reopen it.
+    if (!isValidTxSignature(txSignature)) {
+      return res.status(400).json({
+        success: false,
+        error: txSignature
+          ? 'Malformed txSignature: expected a base58 Solana signature of 86-88 characters.'
+          : 'txSignature is required. A dataset cannot be recorded before it is anchored on-chain.',
+      });
+    }
+
+    // The id is minted by the client because the dataset PDA is seeded on it, so it
+    // must exist before the transaction is signed. Validated to the same shape both
+    // ends agree on.
+    if (!isValidDatasetId(datasetId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'datasetId is required and must be exactly 32 lowercase hex characters.',
+      });
+    }
+
     const resolvedAuthority = req.isAuthenticated
       ? req.walletPubkey
       : (authority || `DemoWallet_${Date.now()}`);
 
     const result = await db.registerDataset({
+      datasetId,
       name:           name.trim().slice(0, 128),
       description:    (description || '').slice(0, 2048),
       fileHash,
       ipfsCid:        (ipfsCid || '').slice(0, 256),
       metadataUri:    (metadataUri || '').slice(0, 512),
       authority:      resolvedAuthority!,
-      txSignature:    txSignature || '',
+      txSignature,
       isAuthenticated: req.isAuthenticated,
     });
 
@@ -124,12 +149,19 @@ router.post('/register', writeLimiter, verifyWalletSignature, async (req: Reques
 
     res.status(201).json({
       success: true,
-      message: result.txSignature
-        ? 'Dataset registered — on-chain verification queued'
-        : 'Dataset registered in demo mode',
+      message: 'Dataset registered — on-chain verification queued',
       ...result,
     });
   } catch (err: any) {
+    // A replayed pending-sync entry hits the unique index on datasetId. That is the
+    // client retrying a write whose transaction already confirmed, not a server fault,
+    // so it gets 409 and the client treats the entry as done.
+    if (err?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: 'A dataset with this id already exists.',
+      });
+    }
     console.error('[POST /api/datasets/register]', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
@@ -138,7 +170,7 @@ router.post('/register', writeLimiter, verifyWalletSignature, async (req: Reques
 // ─── POST /api/datasets/update ────────────────────────────────────────────────
 router.post('/update', writeLimiter, verifyWalletSignature, async (req: Request, res: Response) => {
   try {
-    const { datasetId, newFileHash, changeDescription, ipfsCid, authority, txSignature } = req.body;
+    const { datasetId, newFileHash, changeDescription, ipfsCid, authority, txSignature, versionNumber } = req.body;
 
     if (!datasetId || typeof datasetId !== 'string') {
       return res.status(400).json({ success: false, error: 'datasetId is required' });
@@ -148,6 +180,19 @@ router.post('/update', writeLimiter, verifyWalletSignature, async (req: Request,
     }
     if (!isValidHash(newFileHash)) {
       return res.status(400).json({ success: false, error: 'Invalid SHA-256 hash (must be exactly 64 lowercase hex characters)' });
+    }
+
+    // Same guard as /register: no version is recorded before it is anchored.
+    if (!isValidTxSignature(txSignature)) {
+      return res.status(400).json({
+        success: false,
+        error: txSignature
+          ? 'Malformed txSignature: expected a base58 Solana signature of 86-88 characters.'
+          : 'txSignature is required. A version cannot be recorded before it is anchored on-chain.',
+      });
+    }
+    if (versionNumber !== undefined && !Number.isInteger(versionNumber)) {
+      return res.status(400).json({ success: false, error: 'versionNumber must be an integer' });
     }
 
     const resolvedAuthority = req.isAuthenticated
@@ -160,7 +205,8 @@ router.post('/update', writeLimiter, verifyWalletSignature, async (req: Request,
       changeDescription: (changeDescription || 'Version update').slice(0, 1024),
       ipfsCid: (ipfsCid || '').slice(0, 256),
       authority: resolvedAuthority!,
-      txSignature: txSignature || '',
+      txSignature,
+      expectedVersionNumber: versionNumber,
     });
 
     if (txSignature && req.app.locals.txQueue) {
@@ -177,14 +223,16 @@ router.post('/update', writeLimiter, verifyWalletSignature, async (req: Request,
 
     res.json({
       success: true,
-      message: result.txSignature
-        ? 'Dataset version updated — on-chain verification queued'
-        : 'Dataset version updated in demo mode',
+      message: 'Dataset version updated — on-chain verification queued',
       ...result,
     });
   } catch (err: any) {
+    if (err?.status === 409 || err?.code === 11000) {
+      return res.status(409).json({ success: false, error: err.message });
+    }
     console.error('[POST /api/datasets/update]', err.message);
-    res.status(400).json({ success: false, error: err.message });
+    const status = /^unauthorized/i.test(err.message) ? 403 : 400;
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -231,13 +279,20 @@ router.post('/transfer', writeLimiter, verifyWalletSignature, async (req: Reques
     if (!datasetId || !newAuthority || !authority) {
       return res.status(400).json({ success: false, error: 'datasetId, newAuthority, and authority are required' });
     }
+    if (!isValidPubkey(newAuthority)) {
+      return res.status(400).json({
+        success: false,
+        error: 'newAuthority is not a valid Solana public key (must base58-decode to 32 bytes).',
+      });
+    }
 
     const resolvedAuthority = req.isAuthenticated ? req.walletPubkey : authority;
     const result = await db.transferOwnership(datasetId, newAuthority, resolvedAuthority!);
     res.json(result);
   } catch (err: any) {
     console.error('[POST /api/datasets/transfer]', err.message);
-    res.status(400).json({ success: false, error: err.message });
+    const status = err?.status ?? (/^unauthorized/i.test(err.message) ? 403 : 400);
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -254,7 +309,8 @@ router.post('/deactivate', writeLimiter, verifyWalletSignature, async (req: Requ
     res.json(result);
   } catch (err: any) {
     console.error('[POST /api/datasets/deactivate]', err.message);
-    res.status(400).json({ success: false, error: err.message });
+    const status = err?.status ?? (/^unauthorized/i.test(err.message) ? 403 : 400);
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
