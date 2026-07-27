@@ -1,0 +1,141 @@
+/* Navbar. Instrument-panel bar: a hairline base rule, no floating pill, no blur. */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) max(var(--space-4), calc((100vw - 1180px) / 2));
+  background: var(--canvas);
+  border-bottom: 1px solid var(--edge);
+}
+
+.navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  font-weight: 700;
+  font-size: var(--text-18);
+  color: var(--fg);
+  text-decoration: none;
+}
+.navbar-brand svg { width: 24px; height: 24px; }
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-inline-end: auto;
+}
+
+/* Bigger targets and real contrast. These were 14px in fg-muted, which is the
+   quietest thing the token set allows, on the most-used control on the site.
+   Navigation is not where restraint pays. 40px minimum height also puts them
+   over the 24x24 floor for WCAG 2.2 target size. */
+.navbar-links a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-16);
+  font-weight: 500;
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+
+.navbar-links a:hover {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+/* The current page announces itself. It was a colour shift plus weight 600 --
+   a difference you had to look for, on a four-item nav where "where am I" is
+   the single most common question. Now a filled block with a rule under it: two
+   independent signals, so it does not rely on colour alone. */
+.navbar-links a.active {
+  color: var(--fg);
+  font-weight: 600;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+/* Connecting a wallet was given filled treatment on the theory that it's the
+   precondition for every write in the product. That collides with the rest of
+   the bar the moment a page has its own filled primary action too -- on Home,
+   the masthead band and the hero CTA are both filled Prussian already, so a
+   third filled block in the same viewport stops pointing at any one of them.
+   The nav is a global utility, not a page's primary action, so it gets the
+   secondary treatment like any other supporting control; the page's own CTA
+   stays the one filled thing worth looking at. */
+.wallet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  min-height: 40px;
+  background: var(--surface);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-14);
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+}
+.wallet-btn:hover { background: var(--surface-sunken); }
+
+/* Once connected it stops being a call to action and becomes a status readout,
+   so it drops back to the quiet treatment and the address goes monospace. */
+.wallet-btn.is-connected {
+  background: var(--surface);
+  border-color: var(--edge-strong);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  font-weight: 400;
+  cursor: default;
+}
+
+.wallet-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--ok);
+}
+
+@media (max-width: 640px) {
+  .navbar { gap: var(--space-3); flex-wrap: wrap; }
+  .navbar-links { order: 3; width: 100%; overflow-x: auto; }
+}
+
+/* ── Cluster badge ───────────────────────────────────────────────────────────
+ * Small, permanent, and never decorative. It reads from config, so it cannot
+ * drift from the chain the client is actually talking to.
+ *
+ * The unset variant is warn rather than accent on purpose: "nobody configured
+ * this" and "we meant devnet" must not look the same.
+ */
+.cluster-badge {
+  flex: none;
+  padding: 3px var(--space-2);
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.cluster-badge-unset {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.cluster-badge[data-cluster='mainnet-beta'] { color: var(--ok); border-color: var(--ok); }

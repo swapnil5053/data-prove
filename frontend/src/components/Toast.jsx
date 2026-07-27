@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { Icon } from './icons'
 
 export default function Toast({ toasts }) {
   return (
@@ -13,7 +14,7 @@ export default function Toast({ toasts }) {
             exit={{ opacity: 0, x: 100, scale: 0.8 }}
             transition={{ type: 'spring', damping: 20 }}
           >
-            <span>{toast.type === 'success' ? '✅' : '❌'}</span>
+            <Icon name={toast.type === 'success' ? 'check' : 'x'} />
             <span>{toast.message}</span>
           </motion.div>
         ))}

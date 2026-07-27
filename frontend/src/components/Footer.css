@@ -1,0 +1,14 @@
+/* Footer. */
+
+.footer {
+  padding: var(--space-6) max(var(--space-4), calc((100vw - 1180px) / 2));
+  border-top: 1px solid var(--edge);
+  font-size: var(--text-14);
+  color: var(--fg-subtle);
+}
+.footer p { margin: 0; }
+.footer p + p { margin-top: var(--space-2); }
+.footer a { color: var(--fg-muted); }
+.footer a:hover { color: var(--fg); }
+
+.footer-verify { font-size: var(--text-12); }
