@@ -2,13 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Blockchain-based Research Data Provenance System on Solana - Track, verify, and authenticate scientific research datasets with immutable on-chain records." />
     <title>DataProve | Research Data Provenance on Solana</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- og:image currently points at the navbar seal mark (SVG). It renders on
+         Facebook/LinkedIn/Discord/Slack unfurls; X/Twitter's crawler does not
+         reliably render SVG previews. Swap in a raster (PNG, 1200x630) card
+         when one exists -- this is a placeholder, not a finished asset. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="DataProve | Research Data Provenance on Solana" />
+    <meta property="og:description" content="Track, verify, and authenticate scientific research datasets with blockchain-backed transparency on Solana." />
+    <meta property="og:image" content="/favicon.svg" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="DataProve | Research Data Provenance on Solana" />
+    <meta name="twitter:description" content="Track, verify, and authenticate scientific research datasets with blockchain-backed transparency on Solana." />
+    <meta name="twitter:image" content="/favicon.svg" />
+
+    <!-- Theme is resolved before first paint. Reading localStorage from a stylesheet
+         is impossible and doing it in React is too late: the first frame would paint
+         the default theme and then swap, which is the flash this avoids. Kept inline
+         and tiny because it blocks rendering by design. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('dataprove:theme');
+          var theme = saved === 'light' || saved === 'dark'
+            ? saved
+            : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
