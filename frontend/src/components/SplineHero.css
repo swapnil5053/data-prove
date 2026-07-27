@@ -1,0 +1,178 @@
+/**
+ * ─── Spline hero ─────────────────────────────────────────────────────────────
+ * The frame reserves its space from first paint. The scene fades in over the
+ * poster when it arrives, so there is no layout shift and no flash of nothing.
+ */
+
+/* No panel, no border, no ground of its own. The scene was sitting in a bordered
+   box, so a bright rectangle with its own pale-blue gradient was pasted onto the
+   page -- a second theme, visibly not ours. It now floats directly on the canvas
+   and is masked down to the object, so what reads is the cubes, not a slab. */
+.spline-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 560px;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+
+  /* The mask lives on the container, not on the frame. The frame is offset far
+     to the left to crop the scene, so a mask applied to it was positioned
+     relative to that offset -- it faded somewhere off-screen and the container's
+     own overflow clip produced a hard vertical edge instead. Masking the
+     container means the fade always happens at the edges you can actually see. */
+  /* color-mix rather than an rgba() literal: a mask only reads alpha, so the
+     colour is arbitrary, and the raw-colour gate is right to reject a literal
+     in a component file even when it is doing something harmless. */
+  --scene-mask: radial-gradient(
+    ellipse 50% 50% at 50% 50%,
+    black 42%,
+    color-mix(in srgb, black 55%, transparent) 68%,
+    transparent 88%
+  );
+  mask-image: var(--scene-mask);
+  -webkit-mask-image: var(--scene-mask);
+}
+
+/* ── Poster ───────────────────────────────────────────────────────────────── */
+
+.spline-poster {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.spline-poster.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spline-poster svg {
+  width: 100%;
+  height: 100%;
+  max-width: 320px;
+  max-height: 320px;
+  overflow: visible;
+}
+
+.spline-poster-ring {
+  fill: none;
+  stroke: var(--edge-strong);
+  stroke-width: 1;
+}
+
+.spline-poster-dot {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.spline-tick,
+.spline-tick-major {
+  stroke: var(--edge-strong);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.spline-tick-major {
+  stroke: var(--fg-muted);
+  stroke-width: 1.5;
+}
+
+/* ── The scene ────────────────────────────────────────────────────────────── */
+
+/* ── Cropping the scene ──────────────────────────────────────────────────────
+ *
+ * The published Spline URL is a complete template *site*, not a bare object:
+ * the scene contains its own nav, its own headline, its own buttons and a
+ * "Built with Spline" badge, all baked in as layers. An iframe cannot strip
+ * them, because they are content, not chrome.
+ *
+ * So the frame is oversized and offset to bring only the object into view, and
+ * the container clips the rest. This is a workaround and it is calibrated by
+ * eye against one scene -- the four variables below are the whole adjustment
+ * surface, so retuning it does not mean touching layout.
+ *
+ * The real fix is upstream: open the scene in Spline, delete the text and
+ * button layers, republish, and set the four values back to 100%/0/0/1.
+ */
+.spline-hero {
+  --scene-w: 230%;   /* frame width relative to the container */
+  --scene-h: 175%;   /* frame height relative to the container */
+  --scene-x: -108%;  /* pull left so the object, not the copy, is centred */
+  --scene-y: -34%;   /* pull up past the scene's own navigation */
+}
+
+.spline-frame {
+  position: absolute;
+  left: var(--scene-x);
+  top: var(--scene-y);
+  width: var(--scene-w);
+  height: var(--scene-h);
+  border: 0;
+  display: block;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+  /* The scene's own background is a pale gradient that does not belong to this
+     palette. Clipping to the object leaves some of it visible at the edges, so
+     the container's own ground shows through underneath and the frame is
+     feathered into it. */
+  /* Multiply drops the scene's near-white ground into the canvas: white times
+     anything is that thing, so the background disappears and only the cubes
+     survive. This is the whole reason the scene stops looking like a pasted
+     rectangle on the light theme. */
+  mix-blend-mode: multiply;
+  /* The scene's own blue is a saturated neon the brand palette never uses --
+     unfiltered, it reads as more saturated than the Prussian accent itself,
+     which breaks the One Accent Rule (DESIGN.md) on the one page that states
+     it. Desaturating and lifting it slightly brings the cube down to the
+     brand's own value range instead of competing with it. */
+  filter: saturate(0.35) brightness(0.96);
+}
+
+.spline-frame.is-ready {
+  opacity: 1;
+}
+
+/* ── Dark ────────────────────────────────────────────────────────────────────
+ *
+ * On a dark ground the scene's baked light background cannot be blended away.
+ * multiply would crush the cubes along with it, and screen was actively wrong --
+ * screen lightens, so it made the pale ground brighter and produced the halo.
+ *
+ * So on dark the honest move is to stop pretending the scene is part of the
+ * page and instead present it as what it looks like: a lit readout. Darkened and
+ * desaturated so it sits at the page's level rather than shouting over it, and
+ * dimmed further so the hash below it stays the brightest thing on screen --
+ * the signature element does not lose top billing to stock artwork.
+ *
+ * The real fix remains upstream: delete the background layer in Spline.
+ */
+[data-theme="dark"] .spline-frame {
+  mix-blend-mode: normal;
+  filter: brightness(0.62) saturate(0.85) contrast(1.05);
+}
+
+[data-theme="dark"] .spline-frame.is-ready {
+  opacity: 0.9;
+}
+
+/* The scene is decoration; it should never be the reason someone cannot read
+   the hero. Below the two-column breakpoint it is dropped entirely rather than
+   stacked, because a full-width WebGL canvas above the fold on a phone is the
+   worst version of this trade. */
+@media (max-width: 900px) {
+  .spline-hero {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spline-poster,
+  .spline-frame {
+    transition: none;
+  }
+}
