@@ -1,0 +1,148 @@
+/* Dataset detail. Certificate header, specification grid, custody timeline. */
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  font-size: var(--text-14);
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--fg); }
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-5);
+  border-bottom: 2px solid var(--edge-strong);
+  margin-bottom: var(--space-6);
+}
+
+.detail-title { font-size: var(--text-32); }
+
+.detail-authority {
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+/* Specification grid. Label above value, hairline separators, values in mono
+   because every one of them is a measurement rather than prose. */
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--edge);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.detail-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface);
+}
+
+.detail-info-label {
+  font-size: var(--text-12);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--fg-subtle);
+}
+
+.detail-info-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+/* Custody timeline. A vertical rule with markers, not a list of cards: the
+   sequence is the information. */
+.version-timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: var(--space-5);
+}
+.version-timeline::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 1px;
+  background: var(--edge-strong);
+}
+
+.version-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--edge);
+}
+.version-item:last-child { border-bottom: none; }
+
+.version-item::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-5) * -1);
+  top: calc(var(--space-4) + 6px);
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  border: 1px solid var(--edge-strong);
+}
+.version-item:first-child::before { background: var(--accent); border-color: var(--accent); }
+
+.version-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.version-number {
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.version-time {
+  font-size: var(--text-12);
+  color: var(--fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.version-desc {
+  font-size: var(--text-14);
+  color: var(--fg-muted);
+  max-width: 68ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.version-hash {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  word-break: break-all;
+}

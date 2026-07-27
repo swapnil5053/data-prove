@@ -1,0 +1,149 @@
+/* Dashboard. A register of records, not a card wall. */
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+/* The size is stated here as well as on the element. An absolutely positioned
+   <svg> with a viewBox but no intrinsic dimensions has no layout size to fall
+   back on, so it scaled to fill the page -- an 800px magnifying glass over the
+   whole dashboard. Belt and braces, because the failure is silent and enormous. */
+.search-icon {
+  position: absolute;
+  left: var(--space-3);
+  width: 18px;
+  height: 18px;
+  color: var(--fg-subtle);
+  pointer-events: none;
+}
+.search-bar .input-field { padding-left: var(--space-8); }
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+/* position: relative so the title link's stretched ::after (below) has a
+   containing block to fill, and so the card itself -- not an <a> wrapping it
+   -- is what carries the pointer cursor and hover lift. The card is no longer
+   inside an anchor at all: the copy button in the hash cell is a real
+   <button>, and a <button> nested inside an <a> is invalid HTML that behaves
+   unpredictably across browsers and screen readers. */
+.dataset-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              transform var(--dur-base) var(--ease-out);
+}
+/* A lift, not just a shadow swap -- elev-2 alone reads as the card getting a
+   drop shadow painted on, not as it rising. The translate is what a "hover
+   lift" actually means; the deeper shadow is what sells it as light instead
+   of a border trick. Bounded to 2px so it reads as attentive, not launching. */
+.dataset-card:hover {
+  border-color: var(--edge-strong);
+  box-shadow: var(--elev-2);
+  transform: translateY(-2px);
+}
+
+.dataset-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dataset-card-title {
+  font-size: var(--text-16);
+  font-weight: 600;
+  line-height: var(--leading-display);
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The stretched-link pattern: the title is a real, meaningfully-labeled <Link>
+   (its text is the dataset name, so it has a real accessible name), but its
+   own box stays exactly where the title sits. The ::after is what actually
+   covers the card -- absolutely positioned, and deliberately NOT relative to
+   this link itself (giving the anchor its own `position` would make its own
+   small box the containing block, stretching the ::after only over the title
+   rather than the card). It skips past to .dataset-card, the nearest
+   positioned ancestor, so clicking anywhere on the card navigates, while the
+   DOM nesting stays valid (no <button> inside this <a>, because the hash
+   cell's copy button is a sibling, not a descendant, of this link). */
+.dataset-card-title-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* The string arriving here is already truncated in JS (see truncateDesc in
+   Dashboard.jsx), not clamped via `-webkit-line-clamp` -- that requires
+   `display: -webkit-box`, which is the one thing that reproducibly broke this
+   element's cursor (confirmed against an isolated test page with the same
+   link-wrapped-text shape but plain `display: block`: only the line-clamped
+   version painted an I-beam despite `cursor: pointer` resolving correctly).
+   `min-height` reserves two lines' worth of space so cards with a short,
+   one-line description still line up with their neighbors in the grid;
+   `overflow: hidden` is a safety net for the rare string the character
+   truncation undershoots, not the truncation mechanism itself. */
+.dataset-card-desc {
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+  color: var(--fg-muted);
+  min-height: calc(var(--leading-body) * 2em);
+  overflow: hidden;
+}
+
+/* Truncated hash in a dense cell: first6…last4, monospace, full value on hover
+   and focus, with a copy affordance beside it. Never the ribbon at this size.
+   position + z-index lift it above the title link's stretched ::after (both
+   are positioned descendants of .dataset-card now), so the copy button stays
+   independently clickable instead of triggering card navigation. */
+.dataset-card-hash {
+  position: relative;
+  z-index: 1;
+  font-size: var(--text-12);
+  color: var(--fg-muted);
+  padding: var(--space-2);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+/* Give the card's HashCell the full row, copy button pinned right. Everywhere
+   else HashCell sits inline in running text (see .hash-cell in primitives.css). */
+.dataset-card-hash .hash-cell {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.dataset-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--edge);
+}
+
+.dataset-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-12);
+  color: var(--fg-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.dataset-card-badge { margin-left: auto; }

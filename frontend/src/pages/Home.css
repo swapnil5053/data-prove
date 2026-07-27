@@ -1,0 +1,342 @@
+/* Home. Instrument panel rather than hero-with-gradient: a stated claim, a
+   measurement strip, and two explanatory grids. No centred column by default --
+   the left edge is a real edge and things align to it. */
+
+/* Two columns from 900px up: text left, scene right. Previously one column with
+   a 62ch cap, which left roughly 70% of a wide viewport empty and read as
+   unfinished rather than restrained. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  padding-block: var(--space-10) var(--space-8);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--space-10);
+  }
+}
+
+.hero-content {
+  max-width: 62ch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Masthead ────────────────────────────────────────────────────────────────
+ * Replaces the pill badge. A rule with the document class on the left and the
+ * issuing subject on the right is how a certificate opens; a rounded pill
+ * floating above a headline is how a landing page opens. */
+/* A solid bar, not a hairline. This is the one place the accent is allowed to
+   be a field rather than a stroke: a certificate's class band is printed, and a
+   1px rule under an eyebrow is the timid version of the same idea. It also
+   gives the page a second value step, which a flat field of one tone cannot. */
+.masthead-rule {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-self: flex-start;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.masthead-rule .section-index,
+.masthead-issuer {
+  color: var(--accent-fg);
+}
+
+.masthead-issuer {
+  font-size: var(--text-12);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Committed, not hedged. 60px on a 1440 screen is a large heading; it is not a
+   masthead. A certificate's title block dominates the sheet, and the previous
+   size left the hero reading as one more paragraph in a slightly bigger face.
+   Pushed wider on the width axis too -- 118% is the instrument-lettering value
+   the type stack was chosen for, and it was sitting unused. */
+.hero h1 {
+  font-size: clamp(var(--text-44), 7.2vw, 104px);
+  font-stretch: 118%;
+  font-weight: 700;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+@media (max-width: 768px) {
+  .hero h1 { line-height: 1.0; letter-spacing: -0.025em; }
+}
+
+/* ── Reference strip ─────────────────────────────────────────────────────────
+ * What the page is calibrated against, stated in the open. Real values from
+ * config, so it cannot drift from what the client is talking to. */
+.masthead-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--edge);
+}
+
+.masthead-refs dt {
+  font-size: var(--text-12);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fg-subtle);
+  margin-bottom: 2px;
+}
+
+.masthead-refs dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.masthead-refs dd a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--fg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--edge-strong);
+}
+.masthead-refs dd a:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Both actions are real buttons now.
+   The secondary was an underlined text link, on the theory that two equal
+   buttons side by side is a generated-UI tell. That was true about the *tell*
+   and wrong about the *product*: verifying is the thing a visitor arriving from
+   a citation most wants to do, and it had the weakest target on the page.
+   Usability outranks the tell. The pair still is not symmetric -- one is filled
+   and one is outlined, and the fill carries the commitment -- but both are
+   unmistakably clickable. */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* Measurement strip. Tabular figures, hairline rules between cells, values in
+   display width so they read as an instrument readout. Home no longer has one
+   of its own -- the four figures it showed were hardcoded placeholders, which
+   is the opposite of what a readout is for. `.stats-bar` and `.stat-*` remain
+   for Dashboard.jsx, which pulls its numbers from a live endpoint. */
+.stats-bar {
+  display: grid;
+  /* Fixed four across, not auto-fit. auto-fit with a 150px floor wrapped the
+     fourth cell onto its own row on wide screens, orphaning the last stat in a
+     half-empty box -- the opposite of a readout. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid var(--edge-strong);
+  background: transparent;
+  overflow: hidden;
+}
+
+@media (max-width: 700px) {
+  .stats-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-inline-end: 1px solid var(--edge);
+}
+.stat-item:last-child { border-inline-end: none; }
+
+.stat-value {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  font-weight: 700;
+  font-size: var(--text-32);
+  line-height: var(--leading-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: var(--text-12);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--fg-subtle);
+}
+
+.features-section,
+.hiw-section { padding-block: var(--space-10); }
+
+/* ── Specification list ──────────────────────────────────────────────────────
+ * Was three equal cards in an auto-fit grid: an icon, a bold title and two
+ * lines of grey text each. That is the most templated section on the web, and
+ * the columns were equal because equal was easiest rather than because the
+ * three items carry equal weight.
+ *
+ * Now a numbered, ruled definition list: index and term in a left gutter, prose
+ * in a measured column. This is how a specification or a set of certificate
+ * clauses is actually set, and it gives the eye three levels -- index, term,
+ * body -- where the cards gave one and a half. */
+.spec-list {
+  margin: 0;
+  border-top: 1px solid var(--edge-strong);
+}
+
+.spec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-block: var(--space-5);
+  border-bottom: 1px solid var(--edge);
+}
+
+@media (min-width: 820px) {
+  .spec-row {
+    grid-template-columns: minmax(220px, 0.85fr) minmax(0, 2fr);
+    gap: var(--space-8);
+    align-items: baseline;
+  }
+}
+
+.spec-row dt {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* Body face at 18px, matching .step h3 -- the type system's own rule (see
+   typography.css h4-h6) is that the expanded display face never goes below
+   32px, because the negative tracking that makes it read as instrument
+   lettering closes the counters too far at heading-adjacent sizes. */
+.spec-term {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-18);
+  color: var(--fg);
+}
+
+.spec-row dd {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+  color: var(--fg-muted);
+}
+
+/* ── Specimen ────────────────────────────────────────────────────────────────
+ * The hash, on the front page, unprompted.
+ *
+ * A sunken full-bleed plate rather than another section on the same ground. The
+ * page was one flat tone from top to bottom, which is what "bland" means in
+ * practice -- no tonal structure, so nothing reads as more important than
+ * anything else. This is the one band that steps down, and it steps down under
+ * the signature element rather than under decoration.
+ *
+ * Full-bleed: the plate runs edge to edge while its contents stay on the page
+ * grid, so it reads as an inset in the sheet rather than a wide card. */
+.specimen {
+  padding-block: var(--space-8);
+  margin-inline: calc(50% - 50vw);
+  padding-inline: max(var(--space-4), calc((100vw - 1180px) / 2));
+  background: var(--surface-sunken);
+  border-block: 1px solid var(--edge-strong);
+}
+
+.specimen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.specimen-note {
+  display: block;
+  margin-top: var(--space-3);
+  font-size: var(--text-14);
+  color: var(--fg-muted);
+}
+.specimen-head .specimen-note { margin-top: 0; }
+a.specimen-note { color: var(--accent); text-decoration: none; }
+a.specimen-note:hover { text-decoration: underline; }
+
+/* ── Steps ───────────────────────────────────────────────────────────────────
+ * Three, one line of copy each, with a number you can read across the room.
+ * The previous numbers were 12px mono in fg-subtle -- the quietest token on the
+ * quietest element, on the one section whose entire job is to say what the site
+ * does at a glance. */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 3px solid var(--accent);
+}
+
+.step-n {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  font-weight: 700;
+  font-size: var(--text-44);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+
+.step h3 {
+  margin: 0;
+  font-size: var(--text-18);
+  font-family: var(--font-body);
+  font-stretch: normal;
+  color: var(--fg);
+}
+
+.step p {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-16);
+  line-height: var(--leading-body);
+  max-width: 40ch;
+}
+
+/* ── Closing ─────────────────────────────────────────────────────────────── */
+.closing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding-block: var(--space-10);
+  margin-top: var(--space-8);
+  border-top: 1px solid var(--edge-strong);
+}
+.closing .section-subtitle { margin-bottom: 0; }

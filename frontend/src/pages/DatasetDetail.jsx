@@ -2,7 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWallet } from '../context/WalletContext'
-import { updateDatasetOnChain, transferOwnershipOnChain, deactivateDatasetOnChain, getExplorerUrl } from '../services/solana'
+import {
+  updateDatasetOnChain, transferOwnershipOnChain, deactivateDatasetOnChain,
+  getNextVersionNumber, getExplorerUrl,
+} from '../services/solana'
+import { enqueue as enqueuePendingSync } from '../services/pendingSync'
+import { classifyChainError, walletDisconnected } from '../services/errors'
+import './DatasetDetail.css'
+import { Icon } from '../components/icons'
+import HashRibbon from '../components/HashRibbon'
+import HashCell from '../components/HashCell'
 
 function formatDate(ts) {
   return new Date(ts * 1000).toLocaleDateString('en-US', {
@@ -19,7 +28,7 @@ function timeAgo(ts) {
 
 export default function DatasetDetail({ addToast }) {
   const { id } = useParams()
-  const { connected, publicKey, setModalOpen } = useWallet()
+  const { connected, publicKey, setModalOpen, getAdapter } = useWallet()
 
   const [dataset, setDataset]   = useState(null)
   const [versions, setVersions] = useState([])
@@ -39,6 +48,60 @@ export default function DatasetDetail({ addToast }) {
   const [newAuthority, setNewAuthority]   = useState('')
   const [transferring, setTransferring]   = useState(false)
   const [deactivating, setDeactivating]   = useState(false)
+
+  const [error, setError]                 = useState(null)
+  const [syncPending, setSyncPending]     = useState(false)
+
+  /**
+   * Sign on-chain, then record. Used by transfer and deactivate, which have the same
+   * shape as update but no version number to resolve first.
+   *
+   * All three previously wrote to the backend first and treated a signing failure as a
+   * warning to toast past, so ownership could change in Mongo while the chain still
+   * named the old authority. The ordering is the whole fix.
+   *
+   * @returns {Promise<boolean>} whether the chain accepted it
+   */
+  const signThenRecord = useCallback(async ({ sign, endpoint, buildBody, done, deferred }) => {
+    setError(null)
+    if (!connected || !publicKey) {
+      setError(walletDisconnected())
+      setModalOpen(true)
+      return false
+    }
+
+    let signature
+    try {
+      const result = await sign()
+      signature = result.signature
+    } catch (err) {
+      setError(classifyChainError(err))
+      return false
+    }
+
+    const body = buildBody(signature)
+    let pending = false
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => undefined)
+      if (!res.ok || !data?.success) pending = true
+    } catch {
+      pending = true
+    }
+
+    if (pending) {
+      enqueuePendingSync({ endpoint, body, signature })
+      setSyncPending(true)
+      addToast(deferred)
+    } else {
+      addToast(done)
+    }
+    return true
+  }, [connected, publicKey, setModalOpen, addToast])
 
   const loadData = useCallback(() => {
     setLoading(true)
@@ -87,76 +150,91 @@ export default function DatasetDetail({ addToast }) {
 
     setUpdating(true)
     setTxSignature(null)
-    let txSig = null
+    setError(null)
 
+    // ── 1. Wallet is a precondition ──────────────────────────────────────────
+    if (!connected || !publicKey) {
+      setError(walletDisconnected())
+      setModalOpen(true)
+      setUpdating(false)
+      return
+    }
+
+    // ── 2. The next version number comes from the chain, not from Mongo ──────
+    // Mongo is a cache written after the fact by the verifier worker, so
+    // dataset.versionCount can lag. Signing against a stale value produces a
+    // transaction the program rejects with InvalidVersionNumber, after the user
+    // has already waited for their wallet. The fetch doubles as an existence and
+    // ownership check.
+    let versionNumber
+    let signature
     try {
-      // Register updated version with backend
-      setUpdateStep('Saving new version...')
+      setUpdateStep('Reading the current version from the chain')
+      versionNumber = await getNextVersionNumber(getAdapter(), publicKey, id)
+    } catch (err) {
+      setError(classifyChainError(err))
+      setUpdating(false)
+      setUpdateStep('')
+      return
+    }
+
+    // ── 3. Chain first ───────────────────────────────────────────────────────
+    try {
+      setUpdateStep('Waiting for your signature')
+      const result = await updateDatasetOnChain(getAdapter(), publicKey, {
+        datasetId: id,
+        newFileHash,
+        versionNumber,
+        changeDescription: changeDesc,
+      })
+      signature = result.signature
+      setTxSignature(signature)
+    } catch (err) {
+      setError(classifyChainError(err))
+      setUpdating(false)
+      setUpdateStep('')
+      return
+    }
+
+    // ── 4. Confirmed. Now record it. ─────────────────────────────────────────
+    const body = {
+      datasetId: id,
+      newFileHash,
+      versionNumber,
+      changeDescription: changeDesc,
+      authority: publicKey,
+      txSignature: signature,
+    }
+
+    setUpdateStep('Recording')
+    let pending = false
+    try {
       const res = await fetch('/api/datasets/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          datasetId: id,
-          newFileHash,
-          changeDescription: changeDesc,
-          authority: publicKey,
-        }),
+        body: JSON.stringify(body),
       })
-      const data = await res.json()
-      if (!data.success) {
-        addToast(data.error || 'Update failed', 'error')
-        return
-      }
-
-      // Sign transaction via connected wallet
-      if (connected && publicKey) {
-        try {
-          setUpdateStep('Waiting for wallet approval...')
-          const savedId = localStorage.getItem('dataprove_wallet')
-          let walletAdapter =
-            savedId === 'phantom'  ? window?.phantom?.solana :
-            savedId === 'solflare' ? window?.solflare :
-            savedId === 'backpack' ? window?.backpack :
-            window?.solana
-
-          if (walletAdapter) {
-            setUpdateStep('Sign the transaction in your wallet...')
-            const { signature } = await updateDatasetOnChain(
-              walletAdapter,
-              publicKey,
-              { datasetId: id, newFileHash, versionNumber: data.versionRecord.versionNumber }
-            )
-            txSig = signature
-            setTxSignature(signature)
-            setUpdateStep('Transaction confirmed!')
-          }
-        } catch (walletErr) {
-          if (walletErr.message?.includes('rejected') || walletErr.code === 4001) {
-            addToast('Transaction rejected by wallet', 'error')
-          } else {
-            addToast(`On-chain signing failed: ${walletErr.message}`, 'error')
-          }
-        }
-      }
-
-      // Refresh client state
-      addToast(txSig
-        ? `Version ${data.versionRecord.versionNumber} signed & recorded on Solana! 🎉`
-        : `Version ${data.versionRecord.versionNumber} saved successfully!`
-      )
-      // Reset form + reload data
-      setNewFileHash('')
-      setNewFileName('')
-      setChangeDesc('')
-      if (!txSig) setShowUpdate(false)
-      loadData()
-
-    } catch (err) {
-      addToast('Error: ' + err.message, 'error')
-    } finally {
-      if (!txSig) setUpdating(false)
-      setUpdateStep('')
+      const data = await res.json().catch(() => undefined)
+      if (!res.ok || !data?.success) pending = true
+    } catch {
+      pending = true
     }
+
+    // ── 5. The anchor exists either way. Never reported as a failure. ────────
+    if (pending) {
+      enqueuePendingSync({ endpoint: '/api/datasets/update', body, signature })
+      setSyncPending(true)
+      addToast(`Version ${versionNumber} recorded on-chain. Sync pending.`)
+    } else {
+      addToast(`Version ${versionNumber} anchored on-chain.`)
+    }
+
+    setNewFileHash('')
+    setNewFileName('')
+    setChangeDesc('')
+    setUpdateStep('')
+    setUpdating(false)
+    loadData()
   }
 
   const handleTransfer = async (e) => {
@@ -164,122 +242,64 @@ export default function DatasetDetail({ addToast }) {
     if (!newAuthority.trim()) return
 
     setTransferring(true)
-    let txSig = null
-
-    try {
-      const res = await fetch('/api/datasets/transfer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          datasetId: id,
-          newAuthority: newAuthority.trim(),
-          authority: publicKey,
-        }),
-      })
-      const data = await res.json()
-      if (!data.success) {
-        addToast(data.error || 'Transfer failed', 'error')
-        return
-      }
-
-      if (connected && publicKey) {
-        try {
-          const savedId = localStorage.getItem('dataprove_wallet')
-          let walletAdapter =
-            savedId === 'phantom'  ? window?.phantom?.solana :
-            savedId === 'solflare' ? window?.solflare :
-            savedId === 'backpack' ? window?.backpack :
-            window?.solana
-
-          if (walletAdapter) {
-            const { signature } = await transferOwnershipOnChain(
-              walletAdapter,
-              publicKey,
-              { datasetId: id, newAuthority: newAuthority.trim() }
-            )
-            txSig = signature
-          }
-        } catch (walletErr) {
-          addToast(`On-chain signing failed: ${walletErr.message}`, 'error')
-        }
-      }
-
-      addToast(txSig
-        ? `Ownership transferred and confirmed on Solana! 🎉`
-        : `Ownership transferred successfully!`
-      )
+    const ok = await signThenRecord({
+      sign: () => transferOwnershipOnChain(getAdapter(), publicKey, {
+        datasetId: id, newAuthority: newAuthority.trim(),
+      }),
+      endpoint: '/api/datasets/transfer',
+      buildBody: (signature) => ({
+        datasetId: id,
+        newAuthority: newAuthority.trim(),
+        authority: publicKey,
+        txSignature: signature,
+      }),
+      done: 'Ownership transferred on-chain.',
+      deferred: 'Ownership transferred on-chain. Sync pending.',
+    })
+    setTransferring(false)
+    if (ok) {
       setNewAuthority('')
       setShowTransfer(false)
       loadData()
-    } catch (err) {
-      addToast('Error: ' + err.message, 'error')
-    } finally {
-      setTransferring(false)
     }
   }
 
   const handleDeactivate = async () => {
     if (!confirm("Are you sure you want to deactivate this dataset? This action cannot be undone.")) return;
     setDeactivating(true)
-    let txSig = null
-
-    try {
-      const res = await fetch('/api/datasets/deactivate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          datasetId: id,
-          authority: publicKey,
-        }),
-      })
-      const data = await res.json()
-      if (!data.success) {
-        addToast(data.error || 'Deactivation failed', 'error')
-        return
-      }
-
-      if (connected && publicKey) {
-        try {
-          const savedId = localStorage.getItem('dataprove_wallet')
-          let walletAdapter =
-            savedId === 'phantom'  ? window?.phantom?.solana :
-            savedId === 'solflare' ? window?.solflare :
-            savedId === 'backpack' ? window?.backpack :
-            window?.solana
-
-          if (walletAdapter) {
-            const { signature } = await deactivateDatasetOnChain(
-              walletAdapter,
-              publicKey,
-              { datasetId: id }
-            )
-            txSig = signature
-          }
-        } catch (walletErr) {
-          addToast(`On-chain signing failed: ${walletErr.message}`, 'error')
-        }
-      }
-
-      addToast(txSig
-        ? `Dataset deactivated and confirmed on Solana!`
-        : `Dataset deactivated successfully!`
-      )
-      loadData()
-    } catch (err) {
-      addToast('Error: ' + err.message, 'error')
-    } finally {
-      setDeactivating(false)
-    }
+    const ok = await signThenRecord({
+      sign: () => deactivateDatasetOnChain(getAdapter(), publicKey, { datasetId: id }),
+      endpoint: '/api/datasets/deactivate',
+      buildBody: (signature) => ({
+        datasetId: id,
+        authority: publicKey,
+        txSignature: signature,
+      }),
+      done: 'Dataset deactivated on-chain.',
+      deferred: 'Dataset deactivated on-chain. Sync pending.',
+    })
+    setDeactivating(false)
+    if (ok) loadData()
   }
 
   // ── Loading / Not Found states ─────────────────────────────────────────────
+  // Each early return is its own mount, not a sibling swap within one tree, so
+  // a true crossfade between them isn't available cheaply here (unlike
+  // Dashboard's loading/grid/empty, which share one parent). Fading each one
+  // in on its own mount still replaces the instant materialization with
+  // something that arrives, rather than simply appearing.
   if (loading) {
     return (
       <div className="page-container">
-        <div className="loading-container">
+        <motion.div
+          className="loading-container"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
           <div className="spinner"></div>
-          <span style={{ color: 'var(--text-secondary)' }}>Loading dataset...</span>
-        </div>
+          <span style={{ color: 'var(--fg-muted)' }}>Loading dataset...</span>
+        </motion.div>
       </div>
     )
   }
@@ -287,12 +307,17 @@ export default function DatasetDetail({ addToast }) {
   if (!dataset) {
     return (
       <div className="page-container">
-        <div className="empty-state">
-          <div className="empty-state-icon">❌</div>
+        <motion.div
+          className="empty-state"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Icon name="alert-triangle" size={28} className="empty-state-icon" />
           <h3>Dataset Not Found</h3>
           <p>The dataset ID "{id}" does not exist on-chain.</p>
           <Link to="/dashboard" className="btn btn-primary">Back to Dashboard</Link>
-        </div>
+        </motion.div>
       </div>
     )
   }
@@ -309,6 +334,12 @@ export default function DatasetDetail({ addToast }) {
         Back to Dashboard
       </Link>
 
+      {/* Main content sits on an opaque surface so the canvas's drafting-grid
+          texture stops showing through dense text (the spec grid, hash
+          values, version timeline) -- mirrors the same deliberate .panel use
+          on Dashboard; the back-link above stays on canvas. */}
+      <div className="panel panel-padded">
+
       {/* ── Header Card ─────────────────────────────────────────── */}
       <motion.div
         className="glass-card detail-header"
@@ -318,14 +349,14 @@ export default function DatasetDetail({ addToast }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <h1 className="detail-title">{dataset.name}</h1>
-            <div className="detail-authority">👤 {dataset.authority}</div>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: '12px' }}>
+            <div className="detail-authority">{dataset.authority}</div>
+            <p style={{ color: 'var(--fg-muted)', lineHeight: 1.7, marginTop: '12px' }}>
               {dataset.description}
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-            <span className={`dataset-card-badge ${dataset.isActive ? 'badge-active' : ''}`} style={{ fontSize: '0.8rem', padding: '6px 14px', background: !dataset.isActive ? 'rgba(255,107,53,0.1)' : undefined, color: !dataset.isActive ? '#ff6b35' : undefined, border: !dataset.isActive ? '1px solid rgba(255,107,53,0.2)' : undefined }}>
-              {dataset.isActive ? '● Active' : '● Inactive'}
+            <span className={`badge ${dataset.isActive ? 'badge-ok' : 'badge-warn'}`}>
+              {dataset.isActive ? 'Active' : 'Inactive'}
             </span>
             {/* ── Action Buttons (Owner Only) ── */}
             {isOwner && dataset.isActive && (
@@ -335,22 +366,22 @@ export default function DatasetDetail({ addToast }) {
                    onClick={() => { setShowUpdate(v => !v); setShowTransfer(false); setTxSignature(null) }}
                    style={{ fontSize: '0.82rem' }}
                  >
-                   {showUpdate ? '✕ Cancel Update' : '↑ Update'}
+                   {showUpdate ? 'Cancel' : 'Publish new version'}
                  </button>
                  <button
                    className="btn btn-secondary btn-sm"
                    onClick={() => { setShowTransfer(v => !v); setShowUpdate(false); setTxSignature(null) }}
                    style={{ fontSize: '0.82rem' }}
                  >
-                   {showTransfer ? '✕ Cancel Transfer' : '🔄 Transfer'}
+                   {showTransfer ? 'Cancel' : 'Transfer ownership'}
                  </button>
                  <button
                    className="btn btn-ghost btn-sm"
                    onClick={handleDeactivate}
                    disabled={deactivating}
-                   style={{ fontSize: '0.82rem', color: '#ff6b35', border: '1px solid rgba(255, 107, 53, 0.3)' }}
+                   style={{ color: 'var(--danger)' }}
                  >
-                   {deactivating ? '...' : '🛑 Deactivate'}
+                   {deactivating ? 'Deactivating' : 'Deactivate'}
                  </button>
               </div>
             )}
@@ -395,18 +426,47 @@ export default function DatasetDetail({ addToast }) {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={{ overflow: 'hidden' }}
           >
-            <div className="glass-card" style={{
-              border: '1px solid rgba(0,229,160,0.25)',
-              marginBottom: 'var(--space-xl)',
-              padding: 'var(--space-xl)',
-            }}>
-              <h3 style={{ fontWeight: 700, marginBottom: 'var(--space-lg)', color: 'var(--accent-green)' }}>
-                ↑ Publish New Version — v{dataset.versionCount + 1}
+            <div className="card card-padded" style={{ marginBottom: 'var(--space-6)' }}>
+              <h3 style={{ marginBottom: 'var(--space-5)' }}>
+                Publish new version — v{dataset.versionCount + 1}
               </h3>
+
+              {/* Scoped to the region that failed, with the recovery action the
+                  taxonomy assigned to it. Never a full-page takeover, and never a
+                  toast alone. */}
+              {error && (
+                <div className="form-error" role="alert" style={{ marginBottom: 'var(--space-5)' }}>
+                  <p>{error.message}</p>
+                  {error.detail && (
+                    <pre style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', whiteSpace: 'pre-wrap' }}>
+                      {error.detail}
+                    </pre>
+                  )}
+                  {error.action?.kind === 'reload' && (
+                    <button type="button" className="btn btn-secondary btn-sm"
+                            onClick={() => { setError(null); loadData() }}>
+                      {error.action.label}
+                    </button>
+                  )}
+                  {error.action?.kind === 'link' && error.action.href && (
+                    <a className="btn btn-secondary btn-sm" href={error.action.href}
+                       target="_blank" rel="noopener noreferrer">
+                      {error.action.label}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {syncPending && (
+                <div className="sync-pending" role="status" style={{ marginBottom: 'var(--space-5)' }}>
+                  Recorded on-chain · sync pending. The anchor exists; our index will
+                  catch up and retries automatically.
+                </div>
+              )}
 
               <form onSubmit={handleUpdate}>
                 {/* File drop */}
-                <div className="input-group" style={{ marginBottom: 'var(--space-lg)' }}>
+                <div className="input-group" style={{ marginBottom: 'var(--space-5)' }}>
                   <label>Updated Dataset File *</label>
                   <div
                     className="file-drop-zone"
@@ -421,28 +481,27 @@ export default function DatasetDetail({ addToast }) {
                       style={{ display: 'none' }}
                       onChange={handleFileDrop}
                     />
-                    <div className="drop-icon" style={{ fontSize: '1.8rem', marginBottom: '8px' }}>📂</div>
+                    <Icon name="upload" size={24} />
                     <p style={{ margin: 0 }}>
                       {newFileName ? `Selected: ${newFileName}` : 'Drag & drop updated file, or click to browse'}
                     </p>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--fg-subtle)', marginTop: '6px' }}>
                       File is hashed locally — it never leaves your machine
                     </p>
                   </div>
                   {newFileHash && (
-                    <motion.div
-                      className="hash-display"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      style={{ marginTop: '8px' }}
-                    >
-                      <strong>New SHA-256:</strong> {newFileHash}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <HashRibbon
+                        value={newFileHash}
+                        label="New SHA-256"
+                        announce={addToast}
+                      />
                     </motion.div>
                   )}
                 </div>
 
                 {/* Change description */}
-                <div className="input-group" style={{ marginBottom: 'var(--space-lg)' }}>
+                <div className="input-group" style={{ marginBottom: 'var(--space-5)' }}>
                   <label>What changed in this version? *</label>
                   <textarea
                     className="input-field"
@@ -455,28 +514,17 @@ export default function DatasetDetail({ addToast }) {
                 </div>
 
                 {/* Wallet status */}
-                <div style={{
-                  padding: '10px 14px',
-                  background: connected ? 'rgba(0,229,160,0.05)' : 'rgba(255,107,53,0.05)',
-                  border: `1px solid ${connected ? 'rgba(0,229,160,0.2)' : 'rgba(255,107,53,0.2)'}`,
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.83rem',
-                  color: connected ? 'var(--accent-green)' : '#ff9966',
-                  marginBottom: 'var(--space-lg)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}>
+                <div className="wallet-precondition" style={{ marginBottom: 'var(--space-5)' }}>
                   {connected
-                    ? `✅ Wallet: ${publicKey?.slice(0,8)}...${publicKey?.slice(-4)}`
-                    : '⚠️ No wallet — version will save in demo mode only'
+                    ? `Signing as ${publicKey?.slice(0, 8)}...${publicKey?.slice(-4)}`
+                    : 'A new version is anchored on-chain before it is recorded, so a connected wallet is required.'
                   }
                   {!connected && (
                     <button type="button" className="btn btn-ghost btn-sm"
-                      style={{ color: 'var(--accent-cyan)' }}
+                      style={{ color: 'var(--accent)' }}
                       onClick={() => setModalOpen(true)}
                     >
-                      Connect Wallet →
+                      Connect wallet
                     </button>
                   )}
                 </div>
@@ -516,19 +564,13 @@ export default function DatasetDetail({ addToast }) {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      style={{
-                        marginTop: 'var(--space-lg)',
-                        padding: '14px 18px',
-                        background: 'rgba(0,229,160,0.07)',
-                        border: '1px solid rgba(0,229,160,0.25)',
-                        borderRadius: 'var(--radius-md)',
-                      }}
+                      className="tx-result"
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>✅</span>
-                        <strong style={{ color: 'var(--accent-green)' }}>Confirmed on Solana !</strong>
+                        <Icon name="check" />
+                        <strong style={{ color: 'var(--ok)' }}>Confirmed on Solana !</strong>
                       </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', wordBreak: 'break-all', marginBottom: '10px' }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--fg-subtle)', wordBreak: 'break-all', marginBottom: '10px' }}>
                         {txSignature}
                       </div>
                       <a href={getExplorerUrl(txSignature)} target="_blank" rel="noopener noreferrer"
@@ -554,20 +596,19 @@ export default function DatasetDetail({ addToast }) {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={{ overflow: 'hidden' }}
           >
-            <div className="glass-card" style={{
-              border: '1px solid rgba(0,183,255,0.25)',
-              marginBottom: 'var(--space-xl)',
-              padding: 'var(--space-xl)',
+            <div className="card card-padded" style={{
+              marginBottom: 'var(--space-6)',
+              padding: 'var(--space-6)',
             }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '12px', color: 'var(--accent-cyan)' }}>
-                🔄 Transfer Dataset Ownership
+              <h3 style={{ fontWeight: 700, marginBottom: '12px', color: 'var(--accent)' }}>
+                Transfer dataset ownership
               </h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)', fontSize: '0.9rem' }}>
+              <p style={{ color: 'var(--fg-muted)', marginBottom: 'var(--space-5)', fontSize: '0.9rem' }}>
                 Transferring ownership grants full control (including updates and deactivation) to the new wallet address. You will lose access to administrative functions for this dataset.
               </p>
 
               <form onSubmit={handleTransfer}>
-                <div className="input-group" style={{ marginBottom: 'var(--space-lg)' }}>
+                <div className="input-group" style={{ marginBottom: 'var(--space-5)' }}>
                   <label>New Owner Wallet Address *</label>
                   <input
                     type="text"
@@ -588,13 +629,10 @@ export default function DatasetDetail({ addToast }) {
                   </button>
                   <button
                     type="submit"
-                    className="btn btn-secondary"
+                    className="btn btn-primary"
                     disabled={transferring || !newAuthority}
-                    style={{ background: 'var(--accent-cyan)', color: '#000' }}
                   >
-                    {transferring ? (
-                      <><div className="spinner" style={{ width: 16, height: 16, filter: 'invert(1)' }}></div> Processing...</>
-                    ) : 'Confirm Transfer 🔄'}
+                    {transferring ? 'Transferring' : 'Confirm transfer'}
                   </button>
                 </div>
               </form>
@@ -609,9 +647,9 @@ export default function DatasetDetail({ addToast }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 'var(--space-xl)' }}>
-          <span className="gradient-text">Version History</span>
-          <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.9rem', marginLeft: '12px' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 'var(--space-6)' }}>
+          Version History
+          <span style={{ color: 'var(--fg-subtle)', fontWeight: 400, fontSize: '0.9rem', marginLeft: '12px' }}>
             ({versions.length} version{versions.length !== 1 ? 's' : ''})
           </span>
         </h2>
@@ -639,12 +677,12 @@ export default function DatasetDetail({ addToast }) {
                 </div>
                 <div className="version-desc">{v.changeDescription}</div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <span className="version-hash" title={v.fileHash}>
-                    Hash: {v.fileHash.slice(0, 16)}...{v.fileHash.slice(-8)}
+                  <span className="version-hash">
+                    Hash: <HashCell value={v.fileHash} />
                   </span>
                   {v.previousHash && (
-                    <span className="version-hash" style={{ color: 'var(--text-muted)', opacity: 0.6 }} title={v.previousHash}>
-                      Prev: {v.previousHash.slice(0, 12)}...
+                    <span className="version-hash" style={{ color: 'var(--fg-subtle)', opacity: 0.6 }}>
+                      Prev: <HashCell value={v.previousHash} />
                     </span>
                   )}
                 </div>
@@ -652,11 +690,12 @@ export default function DatasetDetail({ addToast }) {
             ))}
           </div>
         ) : (
-          <div className="glass-card" style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div className="glass-card" style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--fg-muted)' }}>
             No version history available.
           </div>
         )}
       </motion.div>
+      </div>
     </div>
   )
 }

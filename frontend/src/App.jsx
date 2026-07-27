@@ -1,8 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { MotionConfig } from 'framer-motion'
+import { flushQueue } from './services/pendingSync'
 import { WalletProvider } from './context/WalletContext'
 import Navbar from './components/Navbar'
-import AuroraBackground from './components/AuroraBackground'
 import Footer from './components/Footer'
 import Toast from './components/Toast'
 import WalletModal from './components/WalletModal'
@@ -23,18 +24,34 @@ function AppShell() {
     }, 4000)
   }
 
+  // Anything confirmed on-chain whose backend sync failed is parked in localStorage
+  // and replayed here. The signature is the idempotency key, so a replay cannot
+  // duplicate a dataset. Silent on success — the user was already told it was
+  // recorded, because it was.
+  useEffect(() => {
+    flushQueue().then(({ synced }) => {
+      if (synced > 0) {
+        addToast(synced === 1
+          ? 'A pending record finished syncing.'
+          : `${synced} pending records finished syncing.`)
+      }
+    })
+  }, [])
+
   return (
     <>
-      <AuroraBackground />
+      <a className="skip-link" href="#main">Skip to content</a>
       <Navbar addToast={addToast} />
       <WalletModal />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard addToast={addToast} />} />
-        <Route path="/register" element={<Register addToast={addToast} />} />
-        <Route path="/dataset/:id" element={<DatasetDetail addToast={addToast} />} />
-        <Route path="/verify" element={<Verify addToast={addToast} />} />
-      </Routes>
+      <main id="main" tabIndex={-1}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard addToast={addToast} />} />
+          <Route path="/register" element={<Register addToast={addToast} />} />
+          <Route path="/dataset/:id" element={<DatasetDetail addToast={addToast} />} />
+          <Route path="/verify" element={<Verify addToast={addToast} />} />
+        </Routes>
+      </main>
       <Footer />
       <Toast toasts={toasts} />
     </>
@@ -43,9 +60,15 @@ function AppShell() {
 
 function App() {
   return (
-    <WalletProvider>
-      <AppShell />
-    </WalletProvider>
+    // `reducedMotion="user"` covers every framer-motion animation, transition
+    // and whileInView reveal in the app -- the CSS `prefers-reduced-motion`
+    // guard in reset.css only zeroes CSS animation/transition durations, and
+    // has no reach into framer-motion's JS-driven `animate` calls.
+    <MotionConfig reducedMotion="user">
+      <WalletProvider>
+        <AppShell />
+      </WalletProvider>
+    </MotionConfig>
   )
 }
 

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import './Verify.css'
+import { Icon } from '../components/icons'
 
 function formatDate(ts) {
   return new Date(ts * 1000).toLocaleDateString('en-US', {
@@ -28,7 +30,7 @@ export default function Verify({ addToast }) {
       setResult(data)
       setSearched(true)
       if (data.found) {
-        addToast('Hash verified successfully! ✅')
+        addToast('Hash verified against the registry.')
       } else {
         addToast('Hash not found on-chain', 'error')
       }
@@ -65,7 +67,7 @@ export default function Verify({ addToast }) {
         animate={{ opacity: 1, y: 0 }}
       >
         <h1 className="page-title">
-          Verify <span className="gradient-text">Dataset Hash</span>
+          Verify Dataset Hash
         </h1>
         <p className="page-subtitle">
           Paste a SHA-256 hash to verify if it matches any dataset registered on the Solana blockchain.
@@ -78,7 +80,8 @@ export default function Verify({ addToast }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="glass-card verifier-box">
+        <div className="verifier-main">
+        <div className="verifier-box">
           {/* Hash Input */}
           <div className="verifier-input-row">
             <input
@@ -108,8 +111,8 @@ export default function Verify({ addToast }) {
           </div>
 
           {/* File hash option */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: 'var(--space-xl)' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>or</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: 'var(--space-6)' }}>
+            <span style={{ color: 'var(--fg-subtle)', fontSize: '0.85rem' }}>or</span>
             <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
               <input type="file" style={{ display: 'none' }} onChange={handleFileHash} />
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -119,14 +122,14 @@ export default function Verify({ addToast }) {
               </svg>
               Hash a file
             </label>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            <span style={{ color: 'var(--fg-subtle)', fontSize: '0.8rem' }}>
               {hash.length}/64 characters
             </span>
           </div>
 
           {/* Demo Hashes */}
-          <div style={{ marginBottom: 'var(--space-xl)' }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+          <div style={{ marginBottom: 'var(--space-6)' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--fg-subtle)', marginBottom: '8px' }}>
               Quick test with demo hashes:
             </p>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -154,10 +157,10 @@ export default function Verify({ addToast }) {
                 {result.found ? (
                   <div className="verify-result success">
                     <div className="verify-result-header">
-                      <div className="verify-icon success-icon">✅</div>
+                      <Icon name="check" size={24} className="verify-icon success-icon" />
                       <div>
-                        <h3 style={{ color: 'var(--accent-green)' }}>Hash Verified!</h3>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        <h3 style={{ color: 'var(--ok)' }}>Hash Verified!</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>
                           This hash matches {result.isCurrent ? 'the current version' : `version ${result.versionNumber}`} of a registered dataset.
                         </p>
                       </div>
@@ -188,10 +191,10 @@ export default function Verify({ addToast }) {
                 ) : (
                   <div className="verify-result not-found">
                     <div className="verify-result-header">
-                      <div className="verify-icon fail-icon">❌</div>
+                      <Icon name="alert-triangle" size={24} className="verify-icon fail-icon" />
                       <div>
-                        <h3 style={{ color: 'var(--accent-orange)' }}>Hash Not Found</h3>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        <h3 style={{ color: 'var(--warn)' }}>Hash Not Found</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>
                           This hash does not match any registered dataset on-chain. The data may have been tampered with or was never registered.
                         </p>
                       </div>
@@ -201,6 +204,43 @@ export default function Verify({ addToast }) {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Sidebar. Not filler: verification is the one page a stranger arrives
+            at cold, from a link in a paper, with no idea what the site is. It
+            answers "what am I looking at" and "can I trust this" in the same
+            view as the form, and it stops the page being one small box adrift
+            in an empty canvas. */}
+        <aside className="verifier-aside">
+          <section className="aside-block">
+            <h2 className="aside-title">What this checks</h2>
+            <p>
+              The hash is compared against every version of every dataset
+              anchored on Solana. A match returns the dataset, the version it
+              belongs to, the registering key and the transaction that recorded
+              it.
+            </p>
+          </section>
+
+          <section className="aside-block">
+            <h2 className="aside-title">No wallet required</h2>
+            <p>
+              Verification is a public act. Nothing here is signed, nothing is
+              recorded, and no connection is needed to read the registry.
+            </p>
+          </section>
+
+          <section className="aside-block">
+            <h2 className="aside-title">Computing a hash yourself</h2>
+            <p>Hash a file locally and compare, without trusting this page:</p>
+            <pre className="aside-code"><code>shasum -a 256 dataset.csv</code></pre>
+            <pre className="aside-code"><code>certutil -hashfile dataset.csv SHA256</code></pre>
+            <p className="aside-foot">
+              If your value and the registered value agree, the file is
+              bit-identical to the one that was anchored.
+            </p>
+          </section>
+        </aside>
         </div>
       </motion.div>
     </div>

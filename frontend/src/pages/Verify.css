@@ -1,0 +1,133 @@
+/* Verify. The search form and the verdict block.
+   Verification is a public act: nothing here depends on a connected wallet. */
+
+/* Two columns from 940px. Previously an 820px box in a 1180px container, so
+   the page was a small panel adrift with empty canvas on three sides. */
+.verifier-container { width: 100%; }
+
+.verifier-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 940px) {
+  .verifier-main {
+    grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.9fr);
+    gap: var(--space-8);
+  }
+}
+
+.verifier-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────────
+   Ruled, not carded. A second panel beside the first would read as two equal
+   things; a ruled column reads as marginalia, which is what it is. */
+.verifier-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+  color: var(--fg-muted);
+}
+
+.aside-block {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--edge-strong);
+}
+
+.aside-block p { margin: 0 0 var(--space-3); }
+.aside-block p:last-child { margin-bottom: 0; }
+
+.aside-title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-12);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.aside-code {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  color: var(--fg);
+  overflow-x: auto;
+}
+
+.aside-foot { color: var(--fg-subtle); }
+
+.verifier-input-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.verifier-input-row .input-field {
+  flex: 1 1 320px;
+  font-family: var(--font-mono);
+  font-size: var(--text-14);
+}
+
+/* Verdict. Three outcomes, three semantic colours, one shape.
+   found -> ok, not found -> fg-muted (an absence is not an error),
+   mismatch -> danger. */
+.verify-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--edge-strong);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+}
+.verify-result.success   { border-left-color: var(--ok); }
+.verify-result.not-found { border-left-color: var(--fg-muted); }
+.verify-result.mismatch  { border-left-color: var(--danger); }
+
+.verify-result-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.verify-result-header h3 { font-size: var(--text-24); }
+
+.verify-icon { flex-shrink: 0; margin-top: 2px; }
+.verify-icon.success-icon { color: var(--ok); }
+.verify-icon.fail-icon    { color: var(--danger); }
+
+.verify-detail {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--edge);
+  font-size: var(--text-14);
+}
+.verify-detail:last-child { border-bottom: none; }
+.verify-detail > strong {
+  flex: 0 0 128px;
+  font-weight: 600;
+  color: var(--fg-subtle);
+}
+.verify-detail > span,
+.verify-detail > a { font-variant-numeric: tabular-nums; word-break: break-all; }
+
+@media (max-width: 480px) {
+  .verify-detail { flex-direction: column; gap: var(--space-1); }
+  .verify-detail > strong { flex: none; }
+}

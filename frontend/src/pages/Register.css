@@ -1,0 +1,106 @@
+/* Register. The form, and the drop zone that produces the hash. */
+
+.register-form { width: 100%; }
+
+/* Form left, note rail right. The form caps at 860px inside an 1180px measure,
+   which left a 320px void beside it. The rail is not filler: registration is
+   chain-first here and that ordering is the whole trust claim, so the page it
+   happens on is the right place to say so. */
+.register-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 1040px) {
+  .register-main {
+    grid-template-columns: minmax(0, 2.1fr) minmax(240px, 0.9fr);
+    gap: var(--space-8);
+  }
+}
+
+/* Not a card. A form you would file: ruled at the top, flush left, no panel
+   floating in the middle of the viewport. The previous version was one large
+   rounded container centred on the page with evenly spaced inputs stacked
+   inside it, which is the default arrangement for "a form" and says nothing
+   about what this form is for. */
+.form-card {
+  display: flex;
+  flex-direction: column;
+  max-width: 860px;
+  padding: var(--space-6) 0 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--edge-strong);
+  border-radius: 0;
+}
+
+/* Labels in a left gutter, controls in a measured column -- the way a paper
+   form is set, and it keeps the eye on one left edge instead of scanning a
+   stack of centred blocks. */
+@media (min-width: 860px) {
+  /* Every field is one line: label in the gutter, control in the measure.
+     form-row previously tried to put two fields side by side inside the gutter
+     grid, which dropped the second field's control into the label column -- the
+     IPFS CID input ended up stacked under its own label at gutter width. A
+     paper form puts one field per line anyway, so the row stops being a layout
+     and just passes its children through. */
+  .form-card .form-row { display: contents; }
+
+  .form-card .input-group {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+    margin-bottom: var(--space-5);
+  }
+
+  .form-card .input-group > label {
+    padding-top: 10px;
+    line-height: var(--leading-body);
+  }
+}
+
+/* The drop zone is a control, so its boundary is --edge-strong. Dashed to say
+   "put something here" without needing an icon to say it. */
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  background: var(--canvas);
+  border: 1px dashed var(--edge-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--fg-muted);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.file-drop-zone:hover { border-color: var(--accent); background: var(--surface); }
+.file-drop-zone:focus-within { border-color: var(--accent); }
+
+/* Sits under the ribbon: explains what the value is for without competing with it. */
+.ribbon-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-14);
+  line-height: var(--leading-body);
+  color: var(--fg-muted);
+}
+
+/* Numbered, because the order is the point. */
+.aside-steps {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.aside-steps li { padding-left: var(--space-1); }
+.aside-steps li::marker {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-subtle);
+}
